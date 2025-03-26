@@ -1,0 +1,141 @@
+---
+title: "HW5"
+output: pdf_document
+date: "2025-03-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup
+We will begin by examining some numerical and graphical summaries of the Weekly data, which is part of the ISLR2 library. This data set contains 1,089 weekly returns for the S&P 500 stock index for 21 years, from the beginning of 1990 to the end of 2010. For each date, we have recorded the percentage returns for each of the five previous trading days, Lag1 through Lag5. We have also recorded Volume (the number of shares traded on the previous day, in billions), Today (the percentage return on the date in question), and Direction (whether the market was Up or Down on this date). Our goal is to predict Direction (a qualitative response) using the other features.
+
+Note: Direction is Up if Today is positive, otherwise, it is Down. So, Today must not be used to model Direction.
+
+## Questions 1
+Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+
+## Answer
+Nemrical summary
+```{r}
+library(ISLR2)
+head(Weekly)
+summary(Weekly)
+```
+
+Graphical summary
+```{r}
+library(ggplot2)
+library(GGally)
+
+ggpairs(Weekly)
+```
+
+There is little correlation among the variables, except between Volume and Year. Volume increases over time (Year).
+
+## Question 2
+Use the data set to perform a logistic regression with Direction as the response and Lag1 as a predictor. Use the summary function to print the results.
+
+## Answer
+```{r}
+log_reg = glm(Direction ~ Lag1, family = 'binomial', data = Weekly)
+summary(log_reg)
+```
+
+## Question 3
+Direction has two levels - Up and Down. The glm function in R uses a dummy variable taking 0 and 1, and then it models $\log \left(\frac{P(Y=1|X=x)}{P(Y=0|X=x)} \right)$. Check how the levels are coded. Hint: contrasts(Weekly$Direction). By default, R follows the alphabetical order during the conversion.
+
+## Answer
+```{r}
+contrasts(Weekly$Direction)
+```
+
+Up is denoted by 1.
+
+## Question 4
+Interpret the fitted regression coefficient.
+
+## Answer
+If Lag1 is increased by one percent, the log odds decreases by 0.04313 %. When Lag1 = 0 log odds is 0.23024.
+
+## Question 5
+Calculate the fitted probabilities for the entire training data (Do not print all values; print only the first few). Draw a scatter plot of the data and add the fitted probability curve. Hint: use type = “response” in the predict() function.
+```{r}
+prob = predict(log_reg, newdata = Weekly, type = "response")
+head(prob)
+```
+
+```{r}
+direction.num = ifelse(Weekly$Direction == "Up", 1, 0)
+par(mfrow = c(1,1))
+plot(Weekly$Lag1, direction.num)
+sorted.Lag1 = sort(Weekly$Lag1, index.return = TRUE)
+lines(sorted.Lag1$x, prob[sorted.Lag1$ix], col = "blue")
+abline(h = 0.5, lty = "dotted")
+```
+
+## Question 6
+Use a 0.5 threshold of the probability to calculate the fitted Direction (Up or Down). Determine how many observations were correctly or incorrectly classified. What percentage of market movement is correctly predicted? Hint: get the confusion matrix using table(fitted_Direction, Obs_Direction).
+
+## Answer
+```{r}
+fitted_direction_prob = ifelse(prob > 0.5, "Up", "Down")
+table(fitted_direction_prob, Weekly$Direction)
+
+(correct_percent = mean(fitted_direction_prob == Weekly$Direction)*100)
+```
+
+## Question 7
+Use the data set to perform a linear discriminant analysis (LDA) with Direction as the response and Lag1 as a predictor. Use the summary function to print the results.
+
+## Answer
+```{r}
+library(MASS)
+lda_fit = lda(Direction ~ Lag1, data = Weekly)
+lda_fit
+plot(lda_fit)
+```
+
+## Question 8
+Similar to the logistic regression, determine how many observations were correctly or incorrectly classified. What percentage of market movement is correctly predicted? Hint: use the predict() function to the LDA fit. The output is a list, where “class” gives the predicted $Y$ using a 0.5 threshold.
+
+## Answer
+```{r}
+lda_pred = predict(lda_fit)
+table(lda_pred$class, Weekly$Direction)
+(mean(lda_pred$class == Weekly$Direction)*100)
+```
+
+## Question 9
+Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones? Check the performance as before.
+
+## Answer
+```{r}
+log_reg_2 = glm(Direction ~ . - Year - Today, data = Weekly, family = "binomial")
+summary(log_reg_2)
+```
+
+Yes, Lag2 is statistically significant.
+
+```{r}
+log_reg_2_pob = predict(log_reg_2, type = "response")
+log_reg_2_pred = ifelse(log_reg_2_pob > 0.5, "Up", "Down")
+log_reg_2_pred = as.factor(log_reg_2_pred)
+table(log_reg_2_pred, Weekly$Direction)
+
+(mean(log_reg_2_pred == Weekly$Direction)*100)
+```
+
+## Question 10
+Use the full data set to perform an LDA with Direction as the response and the five lag variables plus Volume as predictors. Check the performance of the LDA.
+
+## Answer
+```{r}
+lda_fit_2 = lda(Direction ~ . - Year - Today, data = Weekly)
+lda_fit_2
+lda_fit_2_pred = predict(lda_fit_2)
+table(lda_fit_2_pred$class, Weekly$Direction)
+(mean(lda_fit_2_pred$class == Weekly$Direction)*100)
+```
+

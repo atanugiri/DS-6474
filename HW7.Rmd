@@ -1,0 +1,158 @@
+---
+title: "HW7"
+output: pdf_document
+date: "2025-03-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1 a.
+```{r}
+# Load necessary libraries
+library(ISLR)
+library(dplyr)
+
+# Function to calculate test error using validation set approach
+Validation_Error <- function(split_ratio = 0.5, include_student = FALSE) {
+  set.seed(sample(1:10000, 1)) # Random seed for different splits
+  
+  # Convert Default variable to binary (1 = Yes, 0 = No)
+  Default$default <- ifelse(Default$default == "Yes", 1, 0)
+  
+  # Split data into training and validation sets
+  n <- nrow(Default)
+  train_indices <- sample(1:n, size = floor(split_ratio * n))
+  train_data <- Default[train_indices, ]
+  test_data <- Default[-train_indices, ]
+  
+  # Fit logistic regression model
+  if (include_student) {
+    model <- glm(default ~ income + balance + student, data = train_data, family = binomial)
+  } else {
+    model <- glm(default ~ income + balance, data = train_data, family = binomial)
+  }
+  
+  # Make predictions
+  prob_predictions <- predict(model, test_data, type = "response")
+  predicted_class <- ifelse(prob_predictions > 0.5, 1, 0)
+  
+  # Calculate test error (misclassification rate)
+  test_error <- mean(predicted_class != test_data$default)
+  return(test_error)
+}
+```
+
+b. 
+```{r}
+# Run Validation_Error 100 times and store results
+set.seed(123)  # For reproducibility
+num_iterations <- 100
+test_errors <- numeric(num_iterations)
+
+for (i in 1:num_iterations) {
+  test_errors[i] <- Validation_Error(split_ratio = 0.5, include_student = FALSE)
+}
+
+# Calculate the average test error
+mean_test_error <- mean(test_errors)
+cat("Average Test Error (without student variable):", mean_test_error, "\n")
+```
+
+c.
+```{r}
+# Run the function again with student variable included
+test_errors_student <- numeric(num_iterations)
+for (i in 1:num_iterations) {
+  test_errors_student[i] <- Validation_Error(split_ratio = 0.5, include_student = TRUE)
+}
+
+# Calculate the average test error with student variable
+mean_test_error_student <- mean(test_errors_student)
+cat("Average Test Error (with student variable):", mean_test_error_student, "\n")
+
+# Compare results
+if (mean_test_error_student < mean_test_error) {
+  cat("Including the student variable reduced the test error.\n")
+} else {
+  cat("Including the student variable did not significantly reduce the test error.\n")
+}
+```
+
+Since the test error is nearly identical with and without the student variable (0.02658 vs. 0.026758), including the student variable did not significantly reduce the test error. This suggests that the student status may not be a strong predictor of default when income and balance are already included in the model.
+
+2 a.
+```{r}
+# Load necessary libraries
+library(ISLR)
+library(boot)
+
+# Fit logistic regression model
+glm_fit <- glm(default ~ income + balance, data = Default, family = binomial)
+
+# Display summary to get standard errors
+summary(glm_fit)$coefficients[, 2]
+```
+
+b.
+```{r}
+boot.fn <- function(data, index) {
+  model <- glm(default ~ income + balance, data = data[index, ], family = binomial)
+  return(coef(model))
+}
+```
+
+c.
+```{r}
+set.seed(1)
+boot_results <- boot(Default, boot.fn, R = 1000)
+
+# Display bootstrap standard errors
+boot_results$t0  # Original estimates
+apply(boot_results$t, 2, sd)  # Bootstrap standard errors
+```
+
+d. Since the results from glm() and bootstrap are nearly identical, there is no significant advantage to using bootstrap here. The standard errors provided by glm() are sufficient.
+
+3 a.
+```{r}
+# Load necessary library
+library(boot)
+
+# Load the Abalone dataset
+column_names <- c("Sex", "Length", "Diameter", "Height", "WholeWeight", "ShuckedWeight",
+                  "VisceraWeight", "ShellWeight", "Rings")
+
+abalone <- read.csv("abalone.data", header = FALSE, col.names = column_names)
+
+summary(abalone)
+boxplot(abalone[, c("Length", "Diameter", "Height", "WholeWeight",
+                    "ShuckedWeight", "VisceraWeight", "ShellWeight")], 
+        main="Boxplot of Abalone Features")
+
+# Remove outliers
+abalone <- subset(abalone, Height > 0)
+```
+
+b.
+```{r}
+abalone$Age <- abalone$Rings + 1.5
+abalone$Rings <- NULL  # Remove Rings column
+```
+
+c.
+```{r}
+set.seed(123)
+
+cv_error <- cv.glm(abalone, glm(Age ~ . -Sex, data = abalone), K = 10)$delta[1]
+cat("10-Fold CV Error (Linear Model):", cv_error, "\n")
+```
+
+d.
+```{r}
+abalone$Length2 <- abalone$Length^2
+
+cv_error_quad <- cv.glm(abalone, glm(Age ~ . -Sex, data = abalone), K = 10)$delta[1]
+cat("10-Fold CV Error (Quadratic Model):", cv_error_quad, "\n")
+```

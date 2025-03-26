@@ -1,0 +1,444 @@
+---
+title: "HW6"
+output: pdf_document
+date: "2025-03-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup 1
+Consider a hypothetical situation where a financial company wants to model credit card default based on a customer’s age, balance, and income. Suppose $X_1$ denotes a random vector containing the age, balance, and income of a default customer. Similarly, $X_2$ is defined for a non-default customer. From their previous data, the company finds the following distributions:
+$$
+X_1 \sim
+N_3(\mu_1, \Sigma_1), \text{ and } X_2 \sim N_3(\mu_2,
+\Sigma_2),
+$$
+
+where
+$$
+\mu_1 = \begin{pmatrix}
+38 \\ 1.75  \\ 32
+\end{pmatrix}, \ \ \
+\mu_2 = \begin{pmatrix}
+39 \\ 0.80  \\ 34
+\end{pmatrix},
+$$
+
+$$
+\Sigma_1 = \begin{pmatrix}
+5.5 & 0.50 & 1 \\ 0.50 & 0.12 & -0.75  \\ 1 & -0.75
+& 200
+\end{pmatrix}, \ \ \
+\Sigma_2 = \begin{pmatrix}
+4 & 0.05 & 0.1 \\ 0.05 & 0.21 & -0.98  \\ 0.1 &
+-0.98 & 170
+\end{pmatrix}.
+$$
+
+Here balance and income are measured in $1,000 scale. The company estimated that 5% of their customers are default.
+
+## Questions
+Generate a data set of size 10,000 (default and non-default combined) from the above setup. Apply different classification algorithms (Logistic Regression, LDA, QDA, KNN-5, KNN-10, and Naive Bayes) and compare their performance both in training and test data. For the test data, generate 100,000 samples.
+
+## Answers
+
+Set up parameters:
+```{r}
+mu_1 = t(c(38, 1.75, 32))
+mu_2 = t(c(39, 0.80, 34))
+
+sigma_1 = matrix(NA, 3, 3)
+sigma_1[1,1] = 5.5; sigma_1[2,2] = 0.12; sigma_1[3,3] = 200
+sigma_1[1,2] = sigma_1[2,1] = 0.50
+sigma_1[1,3] = sigma_1[3,1] = 1
+sigma_1[2,3] = sigma_1[3,2] = -0.75
+sigma_1
+
+sigma_2 = matrix(NA, 3, 3)
+sigma_2[1,1] = 4; sigma_2[2,2] = 0.21; sigma_2[3,3] = 170
+sigma_2[1,2] = sigma_2[2,1] = 0.05
+sigma_2[1,3] = sigma_2[3,1] = 0.1
+sigma_2[2,3] = sigma_2[3,2] = -0.98
+sigma_2
+```
+
+Create training and test data
+```{r}
+library(mvtnorm)
+X1 = rmvnorm(n = 500, mean = mu_1, sigma = sigma_1)
+X2 = rmvnorm(n = 9500, mean = mu_2, sigma = sigma_2)
+
+X = rbind(X1,X2)
+Y = rep(c("Yes", "No"), c(500, 9500))
+
+training_data = data.frame(default = Y, age = X[,1], balance = X[,2], income = X[,3])
+training_data$default = as.factor(training_data$default)
+
+X1 = rmvnorm(n = 5000, mean = mu_1, sigma = sigma_1)
+X2 = rmvnorm(n = 95000, mean = mu_2, sigma = sigma_2)
+
+X = rbind(X1,X2)
+Y = rep(c("Yes", "No"), c(5000, 95000))
+
+test_data = data.frame(default = Y, age = X[,1], balance = X[,2], income = X[,3])
+test_data$default = as.factor(test_data$default)
+```
+
+Create placeholder for results
+```{r}
+classification_report = matrix(NA, 2, 6)
+rownames(classification_report) = c("Training", "Test")
+colnames(classification_report) = c("log_reg", "LDA", "QDA", "KNN(k=5)", "KNN(k=10)", "Naive Bayes")
+```
+
+### Logistic Regression
+```{r}
+log_reg = glm(default ~ ., data = training_data, family = "binomial")
+log_reg_prob_train = predict(log_reg, type = "response")
+log_reg_pred_train = ifelse(log_reg_prob_train > 0.5, "Yes", "No")
+table(log_reg_pred_train, training_data$default)
+train_accuracy = mean(log_reg_pred_train == training_data$default)*100
+classification_report[1,1] = train_accuracy
+
+log_reg_prob_test = predict(log_reg, data = test_data, type = "response")
+log_reg_pred_test = ifelse(log_reg_prob_test > 0.5, "Yes", "No")
+test_accuracy = mean(log_reg_pred_test == test_data$default)*100
+classification_report[2,1] = test_accuracy
+```
+
+### LDA
+```{r}
+library(MASS)
+lda_fit = lda(default ~ ., data = training_data)
+lda_pred_train = predict(lda_fit)
+classification_report["Training", "LDA"] = mean(lda_pred_train$class == training_data$default)*100
+
+lda_pred_test = predict(lda_fit, newdata = test_data)
+classification_report["Test", "LDA"] = mean(lda_pred_test$class == test_data$default)*100
+```
+
+### QDA
+```{r}
+qda_fit = qda(default ~ ., data = training_data)
+qda_pred_train = predict(qda_fit)
+classification_report["Training", "QDA"] = mean(qda_pred_train$class == training_data$default)*100
+
+qda_pred_test = predict(qda_fit, newdata = test_data)
+classification_report["Test", "QDA"] = mean(qda_pred_test$class == test_data$default)*100
+```
+
+### KNN with k=5
+```{r}
+library(class)
+knn_5_fit = knn(train = training_data[,-1], test = training_data[,-1], cl = training_data$default, k = 5)
+classification_report["Training", "KNN(k=5)"] = mean(knn_5_fit == training_data$default)*100
+
+knn_5_fit = knn(train = training_data[,-1], test = test_data[,-1], cl = training_data$default, k = 5)
+classification_report["Test", "KNN(k=5)"] = mean(knn_5_fit == test_data$default)*100
+```
+
+### KNN with k=10
+```{r}
+library(class)
+knn_10_fit = knn(train = training_data[,-1], test = training_data[,-1], cl = training_data$default, k = 10)
+classification_report["Training", "KNN(k=10)"] = mean(knn_10_fit == training_data$default)*100
+
+knn_10_fit = knn(train = training_data[,-1], test = test_data[,-1], cl = training_data$default, k = 10)
+classification_report["Test", "KNN(k=10)"] = mean(knn_10_fit == test_data$default)*100
+```
+
+### Naive Bayes
+```{r}
+library(e1071)
+nb_fit = naiveBayes(default ~ ., data = training_data)
+nb_pred_train = predict(nb_fit, newdata = training_data)
+classification_report["Training", "Naive Bayes"] = mean(nb_pred_train == training_data$default)*100
+
+nb_pred_test = predict(nb_fit, newdata = test_data)
+classification_report["Test", "Naive Bayes"] = mean(nb_pred_test == test_data$default)*100
+```
+
+### Print result
+```{r}
+classification_report
+```
+
+### Conclusion
+The QDA performs a little better than others. As the covariance matrices are different in two classes, it violated the assumption of LDA, logistic regression and Naive Bayes.
+
+
+# Setup 2
+Suppose $X = (X_1, X_2, X_3,X_4)^T$ denotes a random vector containing four input variables. Assume $X \sim N_4(\mu, \Sigma)$, where
+$$
+\mu = \begin{pmatrix}
+35 \\ 1.75  \\ 32 \\ -5
+\end{pmatrix}, \ \ \
+\Sigma = \begin{pmatrix}
+5.5 & 0.50 & 1 & 0\\ 0.50 & 0.12 & -0.75 & 0.1\\
+1 & -0.75 & 100 & 0\\ 0 & 0.1 & 0 & 50
+\end{pmatrix}.
+$$
+
+Generate a sample of size 1,000 from $X. Then, calculate the probability vector $p(x)$ using the following formula:
+$$
+p(x) = \frac{\exp(\beta_0 +
+\beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3+ \beta_4 x_4)}{1+\exp(\beta_0 +
+\beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3+ \beta_4 x_4)},
+$$
+
+where $\beta = (\beta_0,\beta_1,\beta_2,\beta_3,\beta_4)^T = (3, 0.5, 0, -0.6, 1)^T$. Now, generate a set of 1,000 Bernoulli random variable using the success probability as $p(x)$. This is the response variable $Y$ for the classification problem. So, you have a training data of size $n = 1000$ from $(Y, X)$.
+
+## Questions
+Apply different classification algorithms (Logistic Regression, LDA, QDA, KNN-5, KNN-10, and Naive Bayes) and compare their performance both in training and test data. For the test data, generate 10,000 samples.
+
+Note: For the logistics regression, you may get a warning message as “Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred”. This is because some fitted probability values are very close to 0 or 1. So, it is not necessarily a convergence issue.
+
+## Answers
+Setting up parameters:
+```{r}
+n <- 1000
+p <- 4
+beta <- c(3, 0.5, 0, -0.6, 1)
+
+library(mvtnorm)
+mu_vec <- c(35, 1.75, 32, -5)
+
+
+Sigma <- matrix(0, 4, 4)
+diag(Sigma) <- c(5.5, 0.12, 100, 50)
+Sigma[1, 2] <- Sigma[2, 1] <- 0.5
+Sigma[1, 3] <- Sigma[3, 1] <- 1
+Sigma[2, 3] <- Sigma[3, 2] <- -0.75
+Sigma[4, 2] <- Sigma[2, 4] <- 0.1
+Sigma
+```
+
+Create training and test data
+```{r}
+X <- rmvnorm(n = n, mean = mu_vec, sigma = Sigma)
+p_x <- 1/(1 + exp(-(beta[1] + X %*% beta[-1])))
+Y <- rbinom(n = n, size = 1, prob = p_x)
+
+data_training <- data.frame(Y, X)
+colnames(data_training) <- c("Y", paste0("X", 1:p))
+
+# Test data
+n_test <- 10000
+X_test <- rmvnorm(n = n_test, mean = mu_vec, sigma = Sigma)
+p_x_test <- 1/(1 + exp(-(beta[1] + X_test %*% beta[-1])))
+Y_test <- rbinom(n = n_test, size = 1, prob = p_x_test)
+
+data_test <- data.frame(Y_test, X_test)
+colnames(data_test) <- c("Y", paste0("X", 1:p))
+```
+
+Create placeholder for results
+```{r}
+Classification_Error <- matrix(NA, 2, 6)
+rownames(Classification_Error) <- c("Training", "Test")
+colnames(Classification_Error) <- c("Logistic", "LDA", "QDA", "KNN-5", "KNN-10",
+  "Naive Bayes")
+```
+
+### Logistic regression
+```{r}
+logistic.fit <- glm(Y ~ ., data = data_training, family = "binomial")
+logistic.predict <- predict(logistic.fit, type = "response")
+logistic.predict.y <- ifelse(logistic.predict > 0.5, 1, 0)
+
+Classification_Error["Training", "Logistic"] <- mean(logistic.predict.y != data_training$Y)
+logistic.predict <- predict(logistic.fit, type = "response", newdata = data_test)
+logistic.predict.y <- ifelse(logistic.predict > 0.5, 1, 0)
+Classification_Error["Test", "Logistic"] <- mean(logistic.predict.y != data_test$Y)
+```
+
+### LDA
+```{r}
+library(MASS)
+lda.fit <- lda(Y ~ ., data = data_training)
+
+lda.predict <- predict(lda.fit)
+Classification_Error["Training", "LDA"] <- mean(lda.predict$class != data_training$Y)
+
+lda.predict <- predict(lda.fit, newdata = data_test)
+Classification_Error["Test", "LDA"] <- mean(lda.predict$class != data_test$Y)
+```
+
+### QDA
+```{r}
+qda.fit <- qda(Y ~ ., data = data_training)
+qda.predict <- predict(qda.fit)
+Classification_Error["Training", "QDA"] <- mean(qda.predict$class != data_training$Y)
+
+qda.predict <- predict(qda.fit, newdata = data_test)
+table(qda.predict$class, data_test$Y)
+Classification_Error["Test", "QDA"] <- mean(qda.predict$class != data_test$Y)
+```
+
+### KNN with k=5
+```{r}
+knn5.fit <- knn(train = data_training[, -1], test = data_training[, -1], cl = Y,
+                k = 5)
+Classification_Error["Training", "KNN-5"] <- mean(knn5.fit != data_training$Y)
+
+knn5.fit <- knn(train = data_training[, -1], test = data_test[, -1], cl = Y, k = 5)
+Classification_Error["Test", "KNN-5"] <- mean(knn5.fit != data_test$Y)
+```
+
+### KNN with k=10
+```{r}
+knn10.fit <- knn(train = data_training[, -1], test = data_training[, -1], cl = Y,
+                 k = 10)
+Classification_Error["Training", "KNN-10"] <- mean(knn10.fit != data_training$Y)
+
+knn10.fit <- knn(train = data_training[, -1], test = data_test[, -1], cl = Y, k = 10)
+Classification_Error["Test", "KNN-10"] <- mean(knn10.fit != data_test$Y)
+```
+
+### Naive Bayes
+```{r}
+NBayes.fit <- naiveBayes(Y ~ ., data = data_training)
+NBayes.predict <- predict(NBayes.fit, newdata = data_training)
+Classification_Error["Training", "Naive Bayes"] <- mean(NBayes.predict != data_training$Y)
+
+NBayes.predict <- predict(NBayes.fit, newdata = data_test)
+Classification_Error["Test", "Naive Bayes"] <- mean(NBayes.predict != data_test$Y)
+```
+
+### Print result
+```{r}
+Classification_Error
+```
+
+### Conclusion
+Based on all outputs, the LDA and the logistic regression perform a little better than others. The setup is as per the assumptions of the logistic regression and the LDA.
+
+
+# Setup 3
+Load the iris data from the R datasets package. This famous (Fisher’s or Anderson’s) iris data set gives the measurements in centimeters of the variables sepal length and width and petal length and width, respectively, for 50 flowers from each of 3 species of iris. The species are Iris setosa, versicolor, and virginica.
+
+## Questions
+Use a pair plot of the numeric data and label observations by species. Fit a multinomial logistic regression and LDA using the full data and compare their performance.
+
+## Answer
+```{r}
+head(iris)
+library(ggplot2)
+library(GGally)
+```
+
+```{r}
+ggpairs(iris, columns = 1:4, aes(colour=Species, alpha = 0.5))
+```
+
+### Multinomial Logistics Regression
+```{r}
+library(nnet)
+iris$Species <- relevel(iris$Species, ref = "setosa")
+mlr = multinom(Species ~ ., data = iris)
+logistic.predict <- predict(mlr)
+
+table(logistic.predict, iris$Species)
+
+(accuracy_mlr = mean(logistic.predict == iris$Species))
+```
+
+### LDA
+```{r}
+iris.lda <- lda(Species ~ ., data = iris)
+lda.predict <- predict(iris.lda)
+mean(lda.predict$class == iris$Species)
+```
+
+# Setup 4
+The following questions are based on the credit card default data mentioned in the textbook (see the attached file).
+
+## Questions
+Use the full data to fit a logistic model. Take different threshold values to predict the default status from the fitted probability. Then, calculate the Cohen’s Kappa statistic (use the following definition, not a built-in function like confusionMatrix), and plot them against the threshold values. Also, draw the ROC curve preferably using your own function.
+
+The definition of Cohen’s Kappa statistic:
+$$
+{\displaystyle \kappa ={\frac {2\times (TP\times
+TN-FN\times FP)}{(TP+FP)\times (FP+TN)+(TP+FN)\times
+(FN+TN)}}},
+$$
+
+where TP are the true positives, FP are the false positives, TN are the true negatives, and FN are the false negatives.
+
+## Answers
+
+Load data
+```{r}
+default = read.csv("/Users/atanugiri/OneDrive - University of Texas at El Paso/Class Documents/Data Mining/Homework/default.csv")
+head(default)
+default$default = as.factor(default$default)
+default$student = as.factor(default$student)
+summary(default)
+```
+
+### Logistic regression
+```{r}
+log_fit = glm(default ~., data = default, family = "binomial")
+log_fit_prob = predict(log_fit, type = "response")
+```
+
+Function to extract parameters
+```{r}
+stats_summary = function(thr) {
+  log_fit_prob = ifelse(log_fit_prob > thr, "Yes", "No")
+  log_fit_prob = as.factor(log_fit_prob)
+  
+  con_matrix = table(log_fit_prob, default$default)
+  
+  if (nrow(con_matrix) == 1) {
+    if (rownames(con_matrix) == "Yes") {
+      con_matrix = rbind(con_matrix, c(0,0))
+      rownames(con_matrix) = c("Yes", "No")
+    } else {
+      con_matrix = rbind(c(0,0), con_matrix)
+      rownames(con_matrix) = c("Yes", "No")
+    }
+  }
+  
+  TP = con_matrix[1,1]; FN = con_matrix[2,1]; FP = con_matrix[1,2]; TN = con_matrix[2,2]
+
+  kappa_num = 2*(TP*TN - FN*FP)
+  kappa_den = (TP+FP)*(FP+TN) + (TP+FN)*(FN+TN)
+
+  kappa = kappa_num/kappa_den
+
+  TPR = TP/(TP+FN); FPR = FP/(FP+TN)
+  
+  return(list(kappa = kappa, TPR = TPR, FPR = FPR))
+}
+```
+
+Placeholder for result
+```{r}
+thr = seq(0,1,length.out=100)
+kappa_val = TPR_val = FPR_val = numeric(0)
+```
+
+```{r}
+for (i in 1:length(thr)) {
+  result = stats_summary(thr[i])
+  kappa_val[i] = result$kappa
+  TPR_val[i] = result$TPR
+  FPR_val[i] = result$FPR
+}
+```
+
+Kappa statistic plot
+```{r}
+plot(thr, kappa_val, type = "l")
+(Threshold_max = thr[which.max(kappa_val)])
+```
+
+ROC curve
+```{r}
+plot(FPR_val, TPR_val)
+abline(a = 0, b = 1, lty = 2)
+```
+

@@ -15,32 +15,68 @@ knitr::opts_chunk$set(echo = TRUE)
    How many rows are in this data set? How many columns? What do the rows and columns represent (check R help)?
 ```{r}
 library(MASS)
-data = MASS::Boston
-head(data)
+head(Boston)
 
-dim(data)
-# ?MASS::Boston
+dim(Boston)
 ```
 
-There are 506 rows and 14 columns.
-
+-There are 506 rows and 14 columns.\
+-Each row corresponds to a specific neighborhood or district within the Boston area.\
+-Each column represents a different attribute related to housing, crime rates, and economic factors.\
 
 2. Make some pairwise scatterplots of the predictors (columns) in this data set. Describe your findings.
 ```{r}
-
+library(ggplot2)
+library(GGally)
+ggpairs(Boston)
 ```
+As percentage of lower-income households (lstat) increases, median home values (medv) tend to decrease.
+More rooms in a house are associated with a lower percentage of low-income residents and higher median home values.
 
+Higher tax rates are associated with higher pupil-teacher ratios.
+Higher industrialization correlates with higher nitrogen oxides concentration.
+
+Some variables, such as medv and lstat, or nox vs distances to employment centres, show a curved pattern rather than a straight-line trend, suggesting a non-linear relationship.
 
 3. Are any of the predictors associated with the per capita crime rate? If so, explain the relationship.
+```{r}
+correlations = cor(Boston)
+sorted_correlations = sort(correlations["crim", ], decreasing = TRUE)
+```
 
 4. Find the summary of each predictor. Check the top five observations with the highest per capita crime rate.
+```{r}
+summary(Boston)
+sorted_data = sort(Boston[,1], decreasing = TRUE, index.return = TRUE)
+data_5 = sorted_data$ix[1:5]
+data_5_Boston = Boston[data_5,]
+```
 
 5. How many of the census tracts (observations) in this data set bound the Charles river?
+```{r}
+sum(Boston$chas == 1)
+```
 
 6. What is the median pupil-teacher ratio among the towns in this data set?
+```{r}
+median(Boston$ptratio)
+```
 
 7. Which census tract of Boston has the lowest median value of owner-occupied homes? Print the corresponding row.
+```{r}
+Boston[which.min(Boston$medv),]
+```
 
 8. In this dataset, how many of the census tracts average more than eight rooms per dwelling? Find the summary of the census tracts that average more than eight rooms per dwelling.
+```{r}
+sum(Boston$rm > 8)
+summary(Boston[Boston$rm > 8,])
+```
 
 9. Save this dataset in an Excel or CSV file.
+```{r}
+write.csv(Boston, file = "Boston.csv", row.names = FALSE)
+
+library(openxlsx)
+write.xlsx(x = Boston, file = 'Boston_data.xlsx')
+```
