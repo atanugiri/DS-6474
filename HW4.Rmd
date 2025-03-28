@@ -16,48 +16,133 @@ This question involves the use of multiple linear regression on the Auto data se
 ## Question set 1
 \quad a. Load data in R and see the summary statistics. Mention if you need any pre-processing of the data. Hints: missing data is coded as a ‘?’ symbol. Origin is a categorical variable. The name of a car should not be used to model mpg. Finally, you may delete or impute missing values (see question c).
 ```{r}
-setwd("/Users/atanugiri/OneDrive - University of Texas at El Paso/Class Documents/Data Mining/Homework/auto+mpg")
-library("auto-mpg")
-# head(auto-mpg.data)
+data = read.csv("/Users/atanugiri/OneDrive - University of Texas at El Paso/Class Documents/Data Mining/Homework/Auto.csv")
+head(data)
+summary(data)
+data$name = as.factor(data$name)
+data$origin = as.factor(data$origin)
+summary(data)
 ```
 
+
 \quad b. Produce a pair plot that includes all relevant variables in the data set. You may use the ‘ggpairs’ function from the GGally package.
+```{r}
+library(ggplot2)
+library(GGally)
+ggpairs(data[-9])
+```
+
 
 \quad c. Compute the matrix of correlations between the variables. You will need to exclude the name. Also, do not use the origin, as it is a categorical variable. However, the origin should be used for modeling in the next question. Hints: you may use the cor() function from base R. The corrplot package gives a nice visualization of the correlation matrix.
+```{r}
+(cor(data[-c(8,9)]))
+```
 
 \quad d. Use the lm() function to perform a multiple linear regression with mpg as the response and all other variables except name as the predictors. Use the summary() function to print the results. Comment on the output. For instance:
-
+```{r}
+lm_fit = lm(mpg ~ . - name, data = data)
+summary(lm_fit)
+```
 \qquad i) Is there a relationship between the predictors and the response?
+i) Yes, there is a relationship between the predictors and the response as p < $2.2e^{-16}$
 
 \qquad ii) Which predictors appear to have a statistically significant relationship to the response?
+ii) displacement, weight, year, and origin.
 
 \qquad iii) What does the coefficient for the year variable suggest?
+iii) For each unit of increase in displacement, weight, year, and origin the mpg increases by 0.02, - 0.006, 0.75, and 1.43 units, respectively if all other variables remain fixed.
 
 
 \quad e. Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
+```{r}
+par(mfrow = c(2,2))
+plot(lm_fit)
+```
+
+The residuals are not distributed uniformly on both sides of the line line at y = 0.
+Higher values in Q-Q plot shows residuals does not follow normal distribution.
 
 \quad f. Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant? Formula $y \sim .^2$ is used to include all interaction terms.
+```{r}
+data1 = data
+data1$name = NULL
+lm_fit_2 = lm(mpg ~ .^2, data = data1)
+summary(lm_fit_2)
+```
+cylinders:acceleration, acceleration:year, acceleration:origin, and year:origin.
 
-\quad g. Try a few different transformations of the variables, such as $log(X)$, $\sqrt{X}$, $X^2$. Note that $X^2$ transformation needs $I()$ in the formula: $y \sim I(X^2)$. For $\sqrt(X)$ and $X^2$, you can simply use $log(X)$ and $\sqrt{X}$, respectively. Comment on your findings. You may also consider transforming the response variable. The goal is to be familiar with some variable transformations, 
-although they may not be the optimum ones.
+\quad g. Try a few different transformations of the variables, such as $log(X)$, $\sqrt{X}$, $X^2$. Note that $X^2$ transformation needs $I()$ in the formula: $y \sim I(X^2)$. For $\sqrt(X)$ and $X^2$, you can simply use $log(X)$ and $\sqrt{X}$, respectively. Comment on your findings. You may also consider transforming the response variable. The goal is to be familiar with some variable transformations, although they may not be the optimum ones.
+```{r}
+lm_fit_trans = lm(mpg ~ . + log(displacement) + sqrt(horsepower) + year^2, data = data1)
+summary(lm_fit_trans)
+```
 
+$R^2$ has slightly decreased.
 
 ## Setup 2
 This question should be answered using the Carseats data set. The data set is provided in a CSV file.
 
 ## Question set 2
 \quad a. Fit a multiple regression model to predict Sales using Price, Urban, and ShelveLoc.
+```{r}
+data = read.csv("/Users/atanugiri/OneDrive - University of Texas at El Paso/Class Documents/Data Mining/Homework/Carseats.csv")
+summary(data)
+data$ShelveLoc = as.factor(data$ShelveLoc)
+data$Urban = as.factor(data$Urban)
+data$US = as.factor(data$US)
+summary(data)
+```
+```{r}
+lm_fit = lm(Sales ~ Price + Urban + ShelveLoc, data = data)
+summary(lm_fit)
+```
 
 \quad b. Provide an interpretation of each coefficient in the model. Be careful – some of the variables in the model are qualitative!
+```{r}
+contrasts(data$Urban)
+contrasts(data$ShelveLoc)
+```
+For Urban 'No' is baseline. For ShelveLoc 'Bad' is baseline.
+
+For each unit of increase in Price, Urban, ShelveLocGood, and ShelveLocMedium the Sales increases by - 0.06, 4.93, and  1.89 units, respectively if all other variables remain fixed.
 
 \quad c. Write out the model in equation form, being careful to handle the qualitative variables properly.
+$Sales = 11.80818 -0.05699*Price + 0.29375*UrbanYes + 4.92633*ShelveLocGood + 1.88631*ShelveLocMedium$
 
 \quad d. Add the interaction between Urban and Price in the model. Interpret the fitted coefficients.
+```{r}
+lm_fit_2 = lm(Sales ~ Price*Urban + ShelveLoc, data = data)
+summary(lm_fit_2)
+```
+The model is written as:\newline
+$Sales = \beta_0 + \beta_1*Price + \beta_2*UrbanYes + \beta_{31}*ShelveLocGood + \beta_{32}*ShelveLocMedium + \beta_5*Price*UrbanYes$\newline
+
+If Urban = No\newline
+$Sales = \beta_0 + \beta_1*Price + \beta_{31}*ShelveLocGood + \beta_{32}*ShelveLocMedium$\newline
+If Urban = Yes\newline
+$Sales = \beta_0 + \beta_1*Price + \beta_2 + \beta_{31}*ShelveLocGood + \beta_{32}*ShelveLocMedium + \beta_5*Price$\newline
+$= (\beta_0 + \beta_2) + (\beta_1 + \beta_5)*Price + \beta_{31}*ShelveLocGood + \beta_{32}*ShelveLocMedium$\newline
 
 \quad e. For which of the predictors can you reject the null hypothesis $H_0:\beta_j=0$?
+For Price, ShelveLoc we can reject null hypothesis.
 
 \quad f. Now fit a multiple linear model for Sales using all variables provided in the data set (intercept and main effects only). Comment on the model fitting.
+```{r}
+lm_fit = lm(Sales ~ ., data = data)
+summary(lm_fit)
+```
+
+Adjusted R-squared has increased.
 
 \quad g. Fit a smaller model that only uses the predictors for which there is evidence of association with the outcome. We will discuss variable selection in a later chapter, but for this question, select variables with significant p-values.
+```{r}
+lm_fit2 = lm(Sales ~ . - Population - Education - Urban - US, data = data)
+summary(lm_fit2)
+```
 
 \quad h. How well do the models in (f) and (g) fit the data? You may use anova() function to compare to models.
+The Adjusted R-squared values very similar. However, the second model has less variables. So, we should prefer 2nd model.
+```{r}
+anova(lm_fit, lm_fit2)
+```
+p = 0.358. So the models are equivalent.
