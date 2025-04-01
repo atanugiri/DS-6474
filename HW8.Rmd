@@ -1,0 +1,517 @@
+---
+title: "HW8"
+output: pdf_document
+date: "2025-03-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Setup 1: Simulation
+In this exercise, we will generate simulated data, and will then use this data to perform best subset selection.
+
+## Questions
+a. Use the rnorm() function to generate a predictor $X$ of length $n=100$, as well as a noise vector $\epsilon$ of length $n = 100$.
+```{r}
+n = 100
+X = rnorm(n)
+epsilon <- rnorm(n)
+
+head(X)
+```
+
+b. Generate a response vector Y of length $n = 100$ according to the model
+$$
+Y = \beta_0 + \beta_1X + \beta_2 X^2 + \beta_3 X^3 + \epsilon,
+$$
+where $\beta_0, \beta_1, \beta_2,$ and $\beta_3$ are constants of your choice.
+```{r}
+beta0 = 1
+beta1 = 2
+beta2 = 3
+beta3 = 4
+
+# Generate response Y based on the model
+Y = beta0 + beta1 * X + beta2 * X^2 + beta3 * X^3 + epsilon
+
+head(Y)
+```
+
+
+c. Use the regsubsets() function to perform best subset selection in order to choose the best model containing the predictors $X, X^2, \cdots, X^{10}$. What is the best model obtained according to Cp, BIC, and adjusted $R^2$? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained. Note you will need to use the data.frame() function to create a single data set containing both $X$ and $Y$.
+```{r}
+library(leaps)
+
+data = data.frame(
+  Y = Y,
+  X1 = X,
+  X2 = X^2,
+  X3 = X^3,
+  X4 = X^4,
+  X5 = X^5,
+  X6 = X^6,
+  X7 = X^7,
+  X8 = X^8,
+  X9 = X^9,
+  X10 = X^10
+)
+
+# Perform best subset selection
+library(leaps)
+regfit.full = regsubsets(Y ~ ., data = data, nvmax = 10)
+reg.summary = summary(regfit.full)
+
+# Plot Cp, BIC, and Adjusted R^2
+par(mfrow = c(1, 3))
+
+# Adjusted R^2
+plot(reg.summary$adjr2, type = "b", xlab = "Number of Predictors", ylab = "Adjusted R^2")
+which.max(reg.summary$adjr2)
+points(which.max(reg.summary$adjr2), max(reg.summary$adjr2), col = "red", cex = 2, pch = 20)
+
+# Cp
+plot(reg.summary$cp, type = "b", xlab = "Number of Predictors", ylab = "Cp")
+which.min(reg.summary$cp)
+points(which.min(reg.summary$cp), min(reg.summary$cp), col = "red", cex = 2, pch = 20)
+
+# BIC
+plot(reg.summary$bic, type = "b", xlab = "Number of Predictors", ylab = "BIC")
+which.min(reg.summary$bic)
+points(which.min(reg.summary$bic), min(reg.summary$bic), col = "red", cex = 2, pch = 20)
+
+# Best model based on BIC
+best.bic = which.min(reg.summary$bic)
+coef(regfit.full, best.bic)
+```
+
+d. Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the results in (c)?
+```{r}
+# Forward stepwise selection
+regfit.fwd = regsubsets(Y ~ ., data = data, nvmax = 10, method = "forward")
+summary.fwd = summary(regfit.fwd)
+
+# Plot metrics for forward selection
+par(mfrow = c(1, 3))
+
+plot(summary.fwd$adjr2, type = "b", xlab = "Number of Predictors", ylab = "Adjusted R^2")
+points(which.max(summary.fwd$adjr2), max(summary.fwd$adjr2), col = "red", cex = 2, pch = 20)
+
+plot(summary.fwd$cp, type = "b", xlab = "Number of Predictors", ylab = "Cp")
+points(which.min(summary.fwd$cp), min(summary.fwd$cp), col = "red", cex = 2, pch = 20)
+
+plot(summary.fwd$bic, type = "b", xlab = "Number of Predictors", ylab = "BIC")
+points(which.min(summary.fwd$bic), min(summary.fwd$bic), col = "red", cex = 2, pch = 20)
+```
+
+```{r}
+# Backward stepwise selection
+regfit.bwd = regsubsets(Y ~ ., data = data, nvmax = 10, method = "backward")
+summary.bwd = summary(regfit.bwd)
+
+# Plot metrics for backward selection
+par(mfrow = c(1, 3))
+
+plot(summary.bwd$adjr2, type = "b", xlab = "Number of Predictors", ylab = "Adjusted R^2")
+points(which.max(summary.bwd$adjr2), max(summary.bwd$adjr2), col = "red", cex = 2, pch = 20)
+
+plot(summary.bwd$cp, type = "b", xlab = "Number of Predictors", ylab = "Cp")
+points(which.min(summary.bwd$cp), min(summary.bwd$cp), col = "red", cex = 2, pch = 20)
+
+plot(summary.bwd$bic, type = "b", xlab = "Number of Predictors", ylab = "BIC")
+points(which.min(summary.bwd$bic), min(summary.bwd$bic), col = "red", cex = 2, pch = 20)
+```
+
+```{r}
+# Coefficients from best model under BIC for each method
+coef(regfit.full, which.min(summary(regfit.full)$bic))   # Best subset
+coef(regfit.fwd, which.min(summary.fwd$bic))              # Forward
+coef(regfit.bwd, which.min(summary.bwd$bic))              # Backward
+```
+
+e. Now fit a lasso model to the simulated data, again using $X, X^2, \cdots, X^{10}$ as predictors. Use cross-validation to select the optimal value of $\lambda$. Create plots of the cross-validation error as a function of $\lambda$. Report the resulting coefficient estimates, and discuss the results obtained.
+```{r}
+library(glmnet)
+
+# Create design matrix (excluding intercept)
+x = as.matrix(data[, -1])  # All columns except Y
+y = data$Y
+
+set.seed(1)  # for reproducibility
+cv.lasso = cv.glmnet(x, y, alpha = 1)  # default uses MSE
+
+# Plot cross-validation error
+plot(cv.lasso)
+
+# Best lambda (minimizes cross-validation error)
+best_lambda = cv.lasso$lambda.min
+best_lambda
+
+# Coefficients at best lambda
+coef(cv.lasso, s = best_lambda)
+
+lambda_1se = cv.lasso$lambda.1se
+coef(cv.lasso, s = lambda_1se)
+```
+
+f. Now generate a response vector Y according to the model
+$$
+Y = \beta_0 + \beta_7 X^7 + \epsilon,
+$$
+and perform best subset selection and the lasso. Discuss the results obtained.
+```{r}
+# Define new beta values
+beta0 = 1
+beta7 = 7
+
+# Generate response Y with only X^7 as the true predictor
+Y = beta0 + beta7 * X^7 + epsilon
+
+# Update Y in the data frame
+data$Y = Y
+```
+
+
+# Setup 2: Ridge and lasso regression
+In this exercise, we will predict per capita crime rate in the Boston data set from ISLR2 library.
+
+## Questions
+a. Split the data set into a training set and a test set.
+```{r}
+# Load libraries
+library(ISLR2)
+library(glmnet)
+
+head(Boston)
+
+train_indices = sample(1:nrow(Boston), nrow(Boston)/2)
+
+train = Boston[train_indices, ]
+test = Boston[-train_indices, ]
+```
+
+
+b. Fit a linear model using least squares on the training set, and report the test error obtained.
+```{r}
+lm.fit = lm(crim ~ ., data = train)
+summary(lm.fit)
+
+# Predict
+lm.pred = predict(lm.fit, newdata = test)
+
+# Test error
+test_mse = mean((test$crim - lm.pred)^2)
+test_mse
+```
+
+c. Fit a ridge regression model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
+```{r}
+# Design matrices
+x_train = model.matrix(crim ~ ., data = train)[, -1]
+x_test = model.matrix(crim ~ ., data = test)[, -1]
+y_train = train$crim
+y_test = test$crim
+
+# Cross-validation to choose best lambda
+cv.ridge = cv.glmnet(x_train, y_train, alpha = 0)  # alpha = 0 for ridge
+plot(cv.ridge)
+best_lambda_ridge = cv.ridge$lambda.min
+best_lambda_ridge
+
+# Predict crim using ridge
+ridge.pred = predict(cv.ridge, s = best_lambda_ridge, newx = x_test)
+
+# Test MSE
+ridge_mse = mean((y_test - ridge.pred)^2)
+ridge_mse
+```
+
+
+d. Fit a lasso model on the training set, with $\lambda$  chosen by cross-validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+```{r}
+# Fit lasso model with cross-validation
+cv.lasso = cv.glmnet(x_train, y_train, alpha = 1)
+plot(cv.lasso)
+
+best_lambda_lasso = cv.lasso$lambda.min
+best_lambda_lasso
+
+# Predict on test set and compute MSE
+lasso.pred = predict(cv.lasso, s = best_lambda_lasso, newx = x_test)
+
+lasso_mse = mean((y_test - lasso.pred)^2)
+lasso_mse
+
+# Report number of non-zero coefficients
+lasso.coef = predict(cv.lasso, s = best_lambda_lasso, type = "coefficients")
+
+# Count non-zero coefficients (excluding intercept)
+nonzero_count = sum(lasso.coef != 0) - 1
+nonzero_count
+```
+
+e. Propose a model (or set of models) that seem to perform well on this data set, and justify your answer.
+```{r}
+nonzero_count
+```
+
+# Setup 3: PCR and PLS
+In this exercise, we will predict the per capita crime rate in the Boston data set from the ISLR2 library.
+
+## Questions
+a. Split the data set into a training set and a test set.
+```{r}
+library(ISLR2)
+n <- nrow(Boston)
+train_index <- sample(1:n, size = 0.8 * n)
+
+train_data <- Boston[train_index, ]
+test_data  <- Boston[-train_index, ]
+```
+
+b. Fit a principal component regression (PCR) on the training set, with 10-fold cross-validation. Report the training and test errors obtained.
+```{r}
+library(pls)
+
+# Fit PCR model on training set
+pcr_model <- pcr(crim ~ .,
+                 data = train_data,
+                 scale = TRUE,
+                 validation = "CV",
+                 segments = 10)
+
+summary(pcr_model)
+
+validationplot(pcr_model, val.type = "MSEP")
+
+# Training error (MSE):
+train_pred <- predict(pcr_model, ncomp = 5, newdata = train_data)
+
+train_mse <- mean((train_data$crim - train_pred)^2)
+cat("Training MSE:", train_mse, "\n")
+
+# Test error (MSE):
+test_pred <- predict(pcr_model, ncomp = 5, newdata = test_data)
+
+test_mse <- mean((test_data$crim - test_pred)^2)
+cat("Test MSE:", test_mse, "\n")
+```
+
+c. Fit a partial least squares (PLS) regression on the training set, with 10-fold cross-validation. Report the training and test errors obtained.
+```{r}
+pls_model <- plsr(crim ~ .,
+                  data = train_data,
+                  scale = TRUE,
+                  validation = "CV",
+                  segments = 10)  # 10-fold CV
+
+summary(pls_model)
+
+# Plot cross-validated MSEP
+validationplot(pls_model, val.type = "MSEP")
+
+# Training MSE
+train_pred_pls <- predict(pls_model, ncomp = 5, newdata = train_data)
+
+train_mse_pls <- mean((train_data$crim - train_pred_pls)^2)
+cat("PLS Training MSE:", train_mse_pls, "\n")
+
+# Test MSE
+test_pred_pls <- predict(pls_model, ncomp = 5, newdata = test_data)
+
+test_mse_pls <- mean((test_data$crim - test_pred_pls)^2)
+cat("PLS Test MSE:", test_mse_pls, "\n")
+```
+
+d. Propose a model (or set of models) from PCR and PLS that seem to perform well on this data set, and justify your answer.
+
+PLS with 5 components is recommended because of lower training and test MSE.
+
+# Setup 4: Simulation
+We have seen that as the number of features used in a model increases, the training error will necessarily decrease, but the test error may not. We will now explore this in a simulated data set.
+
+## Questions
+a. Generate a data set with $p = 20$ features, $n = 100$  observations, and an associated quantitative response vector generated according to the model
+$$
+Y =  X \beta + \epsilon,
+$$
+
+where $\beta$ has some elements that are exactly equal to zero. For example, you may take
+$\beta_0 = 5, \beta_1 = 3, \beta_2 = -2, \beta_3 = -1.5, \beta_4 = 4, \beta_5 = 2.5$ and 
+$\beta_6 = \beta_7 = \cdots = \beta_{20} = 0$.
+```{r}
+n <- 100  # number of observations
+p <- 20   # number of predictors
+
+# Predictor matrix X (n x p) with standard normal entries
+X <- matrix(rnorm(n * p), nrow = n, ncol = p)
+
+# beta coefficients
+beta <- c(5, 3, -2, -1.5, 4, 2.5, rep(0, p - 6))  # length 20
+
+epsilon <- rnorm(n, mean = 0, sd = 1)
+
+# Response vector Y
+Y <- X %*% beta + epsilon
+
+data <- data.frame(Y = as.vector(Y), X)
+head(data)
+```
+
+b. Generate a test set containing 1,000 observations.
+```{r}
+n_test <- 1000
+X_test <- matrix(rnorm(n_test * p), nrow = n_test, ncol = p)
+epsilon_test <- rnorm(n_test, mean = 0, sd = 1)
+Y_test <- X_test %*% beta + epsilon_test
+test_data <- data.frame(Y = as.vector(Y_test), X_test)
+```
+
+c. Perform the best subset selection on the training set, and find the Cp statistic (BIC or adjusted $R^2$) associated with the best model of each size (number of regressor variables). Which model size do you suggest?
+```{r}
+library(leaps)
+
+# Best subset selection on training data
+best_subset <- regsubsets(Y ~ ., data = data, nvmax = p)  # nvmax = 20
+
+best_summary <- summary(best_subset)
+
+par(mfrow = c(1, 3))
+
+# Plot Cp
+plot(best_summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "b", pch = 19)
+points(which.min(best_summary$cp), min(best_summary$cp), col = "red", pch = 19)
+title("Cp")
+
+# Plot BIC
+plot(best_summary$bic, xlab = "Number of Variables", ylab = "BIC", type = "b", pch = 19)
+points(which.min(best_summary$bic), min(best_summary$bic), col = "red", pch = 19)
+title("BIC")
+
+# Plot Adjusted R^2
+plot(best_summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted R^2", type = "b", pch = 19)
+points(which.max(best_summary$adjr2), max(best_summary$adjr2), col = "red", pch = 19)
+title("Adjusted R^2")
+```
+
+```{r}
+which.min(best_summary$cp)      # Best model size by Cp
+which.min(best_summary$bic)     # Best model size by BIC
+which.max(best_summary$adjr2)   # Best model size by adjusted R^2
+```
+
+d. Plot the training set MSE associated with the best model of each size.
+```{r}
+# Number of observations in training set
+n_train <- nrow(data)
+
+# RSS from regsubsets summary
+rss_values <- best_summary$rss
+
+# Training MSE
+train_mse <- rss_values / n_train
+
+# Plotting
+plot(train_mse, type = "b", pch = 19, xlab = "Number of Variables", ylab = "Training MSE",
+     main = "Training Set MSE for Best Model of Each Size")
+
+```
+
+e. Plot the test set MSE associated with the best model of each size.
+```{r}
+# Get model coefficients from regsubsets object
+predict_regsubsets <- function(object, newdata, id) {
+  model_coefs <- coef(object, id = id)
+  vars <- names(model_coefs)
+  pred_matrix <- model.matrix(as.formula(paste("~", paste(vars[-1], collapse = "+"))), newdata)
+  return(pred_matrix %*% model_coefs)
+}
+
+# Initialize vector to store test MSEs
+test_mse <- rep(NA, p)
+
+for (i in 1:p) {
+  pred <- predict_regsubsets(best_subset, newdata = test_data, id = i)
+  test_mse[i] <- mean((test_data$Y - pred)^2)
+}
+
+# Plotting
+plot(test_mse, type = "b", pch = 19, xlab = "Number of Variables", ylab = "Test MSE",
+     main = "Test Set MSE for Best Model of Each Size")
+```
+
+f. For which model size does the test set MSE take on its minimum value? Is it similar to your suggestion based on the Cp statistic?
+```{r}
+best_size_test_mse <- which.min(test_mse)
+cat("Model size with minimum test set MSE:", best_size_test_mse, "\n")
+
+best_size_cp <- which.min(best_summary$cp)
+cat("Model size with minimum Cp:", best_size_cp, "\n")
+```
+
+The best model size based on test set performance (6 variables) is smaller than the model size suggested by Cp (11 variables). This demonstrates how training-based criteria (like Cp) can overestimate the ideal number of predictors, leading to models that may not generalize well. Therefore, test set MSE is a better guide for selecting model complexity in practice.
+
+g. Now, perform steps (b) to (e) using LASSO, PCR, and PLS regression. Here, instead of using Cp (BIC or adjusted $R^2$), we will use a 10-fold cross-validation to select the optimum tuning parameter ($\lambda$ for LASSO and $M$ for PCR and PLS).
+```{r}
+library(glmnet)  # For LASSO
+library(pls)     # For PCR and PLS
+```
+
+LASSO Regression (with Cross-Validation)
+```{r}
+X_mat <- as.matrix(data[, -1])
+Y_vec <- data$Y
+X_test_mat <- as.matrix(test_data[, -1])
+Y_test_vec <- test_data$Y
+
+# LASSO with 10-fold CV
+cv_lasso <- cv.glmnet(X_mat, Y_vec, alpha = 1, nfolds = 10)
+
+# Best lambda
+best_lambda <- cv_lasso$lambda.min
+cat("Best lambda for LASSO:", best_lambda, "\n")
+
+# Predict on test data
+lasso_pred <- predict(cv_lasso, s = best_lambda, newx = X_test_mat)
+
+# Test MSE
+lasso_mse <- mean((Y_test_vec - lasso_pred)^2)
+cat("Test MSE for LASSO:", lasso_mse, "\n")
+```
+
+Principal Components Regression (PCR)
+```{r}
+# PCR with 10-fold CV
+pcr_model <- pcr(Y ~ ., data = data, scale = TRUE, validation = "CV", segments = 10)
+
+validationplot(pcr_model, val.type = "MSEP")
+
+# Optimal number of components
+opt_comp_pcr <- which.min(pcr_model$validation$PRESS)
+cat("Optimal number of components for PCR:", opt_comp_pcr, "\n")
+
+# Predict on test data
+pcr_pred <- predict(pcr_model, newdata = test_data, ncomp = opt_comp_pcr)
+pcr_mse <- mean((Y_test_vec - pcr_pred)^2)
+cat("Test MSE for PCR:", pcr_mse, "\n")
+```
+
+Partial Least Squares Regression (PLS)
+```{r}
+# PLS with 10-fold CV
+pls_model <- plsr(Y ~ ., data = data, scale = TRUE, validation = "CV", segments = 10)
+
+# Plot MSE vs number of components
+validationplot(pls_model, val.type = "MSEP")
+
+# Optimal number of components
+opt_comp_pls <- which.min(pls_model$validation$PRESS)
+cat("Optimal number of components for PLS:", opt_comp_pls, "\n")
+
+# Predict on test data
+pls_pred <- predict(pls_model, newdata = test_data, ncomp = opt_comp_pls)
+pls_mse <- mean((Y_test_vec - pls_pred)^2)
+cat("Test MSE for PLS:", pls_mse, "\n")
+```
+
