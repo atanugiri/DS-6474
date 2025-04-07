@@ -8,59 +8,62 @@ date: "2025-03-11"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-1 a.
+# Setup 1: The Validation Set Approach
+Consider the logistic regression to predict the probability of default using income and balance on the Default data set in the ISLR package. Suppose our goal is to estimate the test error of this logistic regression model using the validation set approach.
+
+## Questions
+a. Using the validation set approach, estimate the test error of a logistic regression model that uses income and balance to predict default. To do this, you must perform the following steps:
+
+\quad i. Split the sample set into a training set and a validation set. You may use a 50-50, 75-25, or other suitable split.
+
+\quad ii. Fit a multiple logistic regression model using only the training observations.
+
+\quad  iii. Obtain a prediction of default status for each individual in the validation set by computing the posterior probability of default for that individual, and classifying the individual to the default category if the posterior probability is greater than 0.5.
+
 ```{r}
-# Load necessary libraries
 library(ISLR)
-library(dplyr)
+head(Default)
 
-# Function to calculate test error using validation set approach
-Validation_Error <- function(split_ratio = 0.5, include_student = FALSE) {
-  set.seed(sample(1:10000, 1)) # Random seed for different splits
-  
-  # Convert Default variable to binary (1 = Yes, 0 = No)
-  Default$default <- ifelse(Default$default == "Yes", 1, 0)
-  
-  # Split data into training and validation sets
-  n <- nrow(Default)
-  train_indices <- sample(1:n, size = floor(split_ratio * n))
-  train_data <- Default[train_indices, ]
-  test_data <- Default[-train_indices, ]
-  
-  # Fit logistic regression model
-  if (include_student) {
-    model <- glm(default ~ income + balance + student, data = train_data, family = binomial)
-  } else {
-    model <- glm(default ~ income + balance, data = train_data, family = binomial)
-  }
-  
-  # Make predictions
-  prob_predictions <- predict(model, test_data, type = "response")
-  predicted_class <- ifelse(prob_predictions > 0.5, 1, 0)
-  
-  # Calculate test error (misclassification rate)
-  test_error <- mean(predicted_class != test_data$default)
-  return(test_error)
+n <- nrow(Default)
+n_train <- round(n/2)  #sometimes n/2 may be a fraction
+
+Validation_Error <- function() {
+
+  # Validation approach
+  training_set <- sample(n, size = n_train)
+  data_training <- Default[training_set, ]
+  data_test <- Default[-training_set, ]
+
+  glm_fit <- glm(default ~ income + balance, data = data_training, family = binomial)
+
+  # Estimate the prior probability
+  pi_hat <- predict(glm_fit, newdata = data_test, type = "response")
+  predict.y <- ifelse(pi_hat > 0.5, "Yes", "No")  #base is No (alphabetic order)
+
+  # Test error
+  Test_error <- mean(predict.y != data_test$default)
+  return(Test_error)
 }
 ```
 
-b. 
 ```{r}
-# Run Validation_Error 100 times and store results
-set.seed(123)  # For reproducibility
-num_iterations <- 100
-test_errors <- numeric(num_iterations)
-
-for (i in 1:num_iterations) {
-  test_errors[i] <- Validation_Error(split_ratio = 0.5, include_student = FALSE)
-}
-
-# Calculate the average test error
-mean_test_error <- mean(test_errors)
-cat("Average Test Error (without student variable):", mean_test_error, "\n")
+Validation_Error()
+Validation_Error()
+Validation_Error()
 ```
 
-c.
+b. Repeat the process in (a) 100 times, using 100 different splits of the observations into a training set and a validation set. Comment on the results obtained.\newline
+\textbf{Note:} Write an R function, say Validation_Error(), containing all steps of (a). The output of the function will be the test error from the validation set approach using a random split. Run Validation_Error() 100 times using a for loop, and store the output in a vector. Take the average to calculate the final test error.
+```{r}
+Test_errors <- rep(NA, 100)
+for (i in 1:100) Test_errors[i] <- Validation_Error()
+
+mean(Test_errors)
+```
+
+c. Now consider a logistic regression model that predicts the probability of default using income, balance, and a dummy variable for the student. Estimate the test error for this model using the validation set approach. Comment on whether or not including a dummy variable for the student leads to a reduction in the test error rate.
+
+\testbf{Note:} Modify the Validation_Error() function only by changing the model that includes the student variable. Estimate the test error following (b) using the new function.
 ```{r}
 # Run the function again with student variable included
 test_errors_student <- numeric(num_iterations)
@@ -82,77 +85,77 @@ if (mean_test_error_student < mean_test_error) {
 
 Since the test error is nearly identical with and without the student variable (0.02658 vs. 0.026758), including the student variable did not significantly reduce the test error. This suggests that the student status may not be a strong predictor of default when income and balance are already included in the model.
 
-2 a.
-```{r}
-# Load necessary libraries
-library(ISLR)
-library(boot)
+<!-- 2 a. -->
+<!-- ```{r} -->
+<!-- # Load necessary libraries -->
+<!-- library(ISLR) -->
+<!-- library(boot) -->
 
-# Fit logistic regression model
-glm_fit <- glm(default ~ income + balance, data = Default, family = binomial)
+<!-- # Fit logistic regression model -->
+<!-- glm_fit <- glm(default ~ income + balance, data = Default, family = binomial) -->
 
-# Display summary to get standard errors
-summary(glm_fit)$coefficients[, 2]
-```
+<!-- # Display summary to get standard errors -->
+<!-- summary(glm_fit)$coefficients[, 2] -->
+<!-- ``` -->
 
-b.
-```{r}
-boot.fn <- function(data, index) {
-  model <- glm(default ~ income + balance, data = data[index, ], family = binomial)
-  return(coef(model))
-}
-```
+<!-- b. -->
+<!-- ```{r} -->
+<!-- boot.fn <- function(data, index) { -->
+<!--   model <- glm(default ~ income + balance, data = data[index, ], family = binomial) -->
+<!--   return(coef(model)) -->
+<!-- } -->
+<!-- ``` -->
 
-c.
-```{r}
-set.seed(1)
-boot_results <- boot(Default, boot.fn, R = 1000)
+<!-- c. -->
+<!-- ```{r} -->
+<!-- set.seed(1) -->
+<!-- boot_results <- boot(Default, boot.fn, R = 1000) -->
 
-# Display bootstrap standard errors
-boot_results$t0  # Original estimates
-apply(boot_results$t, 2, sd)  # Bootstrap standard errors
-```
+<!-- # Display bootstrap standard errors -->
+<!-- boot_results$t0  # Original estimates -->
+<!-- apply(boot_results$t, 2, sd)  # Bootstrap standard errors -->
+<!-- ``` -->
 
-d. Since the results from glm() and bootstrap are nearly identical, there is no significant advantage to using bootstrap here. The standard errors provided by glm() are sufficient.
+<!-- d. Since the results from glm() and bootstrap are nearly identical, there is no significant advantage to using bootstrap here. The standard errors provided by glm() are sufficient. -->
 
-3 a.
-```{r}
-# Load necessary library
-library(boot)
+<!-- 3 a. -->
+<!-- ```{r} -->
+<!-- # Load necessary library -->
+<!-- library(boot) -->
 
-# Load the Abalone dataset
-column_names <- c("Sex", "Length", "Diameter", "Height", "WholeWeight", "ShuckedWeight",
-                  "VisceraWeight", "ShellWeight", "Rings")
+<!-- # Load the Abalone dataset -->
+<!-- column_names <- c("Sex", "Length", "Diameter", "Height", "WholeWeight", "ShuckedWeight", -->
+<!--                   "VisceraWeight", "ShellWeight", "Rings") -->
 
-abalone <- read.csv("abalone.data", header = FALSE, col.names = column_names)
+<!-- abalone <- read.csv("abalone.data", header = FALSE, col.names = column_names) -->
 
-summary(abalone)
-boxplot(abalone[, c("Length", "Diameter", "Height", "WholeWeight",
-                    "ShuckedWeight", "VisceraWeight", "ShellWeight")], 
-        main="Boxplot of Abalone Features")
+<!-- summary(abalone) -->
+<!-- boxplot(abalone[, c("Length", "Diameter", "Height", "WholeWeight", -->
+<!--                     "ShuckedWeight", "VisceraWeight", "ShellWeight")],  -->
+<!--         main="Boxplot of Abalone Features") -->
 
-# Remove outliers
-abalone <- subset(abalone, Height > 0)
-```
+<!-- # Remove outliers -->
+<!-- abalone <- subset(abalone, Height > 0) -->
+<!-- ``` -->
 
-b.
-```{r}
-abalone$Age <- abalone$Rings + 1.5
-abalone$Rings <- NULL  # Remove Rings column
-```
+<!-- b. -->
+<!-- ```{r} -->
+<!-- abalone$Age <- abalone$Rings + 1.5 -->
+<!-- abalone$Rings <- NULL  # Remove Rings column -->
+<!-- ``` -->
 
-c.
-```{r}
-set.seed(123)
+<!-- c. -->
+<!-- ```{r} -->
+<!-- set.seed(123) -->
 
-cv_error <- cv.glm(abalone, glm(Age ~ . -Sex, data = abalone), K = 10)$delta[1]
-cat("10-Fold CV Error (Linear Model):", cv_error, "\n")
-```
+<!-- cv_error <- cv.glm(abalone, glm(Age ~ . -Sex, data = abalone), K = 10)$delta[1] -->
+<!-- cat("10-Fold CV Error (Linear Model):", cv_error, "\n") -->
+<!-- ``` -->
 
-d.
-```{r}
-abalone$Length2 <- abalone$Length^2
+<!-- d. -->
+<!-- ```{r} -->
+<!-- abalone$Length2 <- abalone$Length^2 -->
 
-cv_error_quad <- cv.glm(abalone, glm(Age ~ . -Sex, data = abalone), K = 10)$delta[1]
-cat("10-Fold CV Error (Quadratic Model):", cv_error_quad, "\n")
-```
+<!-- cv_error_quad <- cv.glm(abalone, glm(Age ~ . -Sex, data = abalone), K = 10)$delta[1] -->
+<!-- cat("10-Fold CV Error (Quadratic Model):", cv_error_quad, "\n") -->
+<!-- ``` -->
