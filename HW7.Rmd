@@ -65,22 +65,7 @@ c. Now consider a logistic regression model that predicts the probability of def
 
 \testbf{Note:} Modify the Validation_Error() function only by changing the model that includes the student variable. Estimate the test error following (b) using the new function.
 ```{r}
-# Run the function again with student variable included
-test_errors_student <- numeric(num_iterations)
-for (i in 1:num_iterations) {
-  test_errors_student[i] <- Validation_Error(split_ratio = 0.5, include_student = TRUE)
-}
-
-# Calculate the average test error with student variable
-mean_test_error_student <- mean(test_errors_student)
-cat("Average Test Error (with student variable):", mean_test_error_student, "\n")
-
-# Compare results
-if (mean_test_error_student < mean_test_error) {
-  cat("Including the student variable reduced the test error.\n")
-} else {
-  cat("Including the student variable did not significantly reduce the test error.\n")
-}
+log_reg = 
 ```
 
 Since the test error is nearly identical with and without the student variable (0.02658 vs. 0.026758), including the student variable did not significantly reduce the test error. This suggests that the student status may not be a strong predictor of default when income and balance are already included in the model.

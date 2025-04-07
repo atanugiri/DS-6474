@@ -40,8 +40,7 @@ Some variables, such as medv and lstat, or nox vs distances to employment centre
 
 3. Are any of the predictors associated with the per capita crime rate? If so, explain the relationship.
 ```{r}
-correlations = cor(Boston)
-sorted_correlations = sort(correlations["crim", ], decreasing = TRUE)
+sort(apply(Boston, 2, function(x) cor(Boston[, 1], x)))
 ```
 
 4. Find the summary of each predictor. Check the top five observations with the highest per capita crime rate.

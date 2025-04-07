@@ -1,0 +1,135 @@
+---
+title: "Midterm"
+output: pdf_document
+date: "2025-04-08"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Setup 1
+## Q1.
+```{r}
+n_train = 50
+sd = 2
+set.seed(1)
+x1 = runif(n_train, min = -3, max = 3)
+x2 = runif(n_train, min = -3, max = 3)
+epsilon = rnorm(n_train, sd = sd)
+
+beta0 = 10; beta1 = 5; beta2 = -2;
+
+y = beta0 + beta1*x1 + beta2*x2 + epsilon
+
+data = data.frame(y = y, x1 = x1, x2 = x2)
+head(data)
+```
+## Q2.
+```{r}
+lm_fit = glm(y ~ ., data = data)
+summary(lm_fit)
+lm_pred = predict(lm_fit)
+head(lm_pred)
+
+(rmse_train = sqrt(mean((lm_pred - data$y)^2)))
+# print(cat"(training root mean square error: " + rmse_train))
+```
+
+## Q3.
+```{r}
+n_test = 1000
+set.seed(1)
+x1 = runif(n_test, min = -3, max = 3)
+x2 = runif(n_test, min = -3, max = 3)
+epsilon = rnorm(n_test, sd = 4)
+
+beta0 = 10; beta1 = 5; beta2 = -2;
+
+y = beta0 + beta1*x1 + beta2*x2 + epsilon
+
+data_test = data.frame(y = y, x1 = x1, x2 = x2)
+head(data_test)
+
+lm_pred_test = predict(lm_fit, data = data_test)
+(rmse_test = sqrt(mean((lm_pred_test - data_test$y)^2)))
+```
+
+RMSE for test data is much higher than model standard deviation.
+
+
+# Setup 2
+## Q1.
+```{r}
+library(mlbench)
+data(PimaIndiansDiabetes)
+head(PimaIndiansDiabetes)
+summary(PimaIndiansDiabetes)
+
+library(ggplot2)
+library(GGally)
+ggpairs(PimaIndiansDiabetes)
+```
+
+Insulin, pedigree, age predictors are right skewed. Triceps skin fold thickness have value 0 for a lot of observations.
+```{r}
+(sum(PimaIndiansDiabetes$triceps == 0))
+(sum(PimaIndiansDiabetes$triceps > 0))
+```
+
+## Q2.
+```{r}
+result = matrix(NA, ncol = 6)
+# colnames(result) = c("Logistic Regression", "LDA", "QDA", "KNN-10", "KNN-5", "Naive Bayes")
+
+# Logistic Regression
+log_reg_fit = glm(diabetes ~ ., family = binomial, data = PimaIndiansDiabetes)
+log_reg_prob = predict(log_reg_fit, type = "response")
+log_reg_pred = ifelse(log_reg_prob > 0.5, "pos", "neg")
+table(log_reg_pred, PimaIndiansDiabetes$diabetes)
+
+result[1] = mean(log_reg_pred != PimaIndiansDiabetes$diabetes)
+
+# LDA
+library(MASS)
+lda_fit = lda(diabetes ~ ., data = PimaIndiansDiabetes)
+lda_pred = predict(lda_fit, newdata = PimaIndiansDiabetes)
+table(lda_pred$class, PimaIndiansDiabetes$diabetes)
+
+result[2] = mean(lda_pred$class != PimaIndiansDiabetes$diabetes)
+
+# QDA
+qda_fit = qda(diabetes ~ ., data = PimaIndiansDiabetes)
+qda_pred = predict(qda_fit, newdata = PimaIndiansDiabetes)
+table(qda_pred$class, PimaIndiansDiabetes$diabetes)
+
+result[3] = mean(qda_pred$class != PimaIndiansDiabetes$diabetes)
+
+# KNN-10
+library(class)
+dim(PimaIndiansDiabetes)
+knn_fit = knn(train = PimaIndiansDiabetes[,-9], test = PimaIndiansDiabetes[,-9], cl = PimaIndiansDiabetes[,9], k = 10)
+table(knn_fit, PimaIndiansDiabetes$diabetes)
+
+result[4] = mean(knn_fit != PimaIndiansDiabetes$diabetes)
+
+# KNN-5
+knn5_fit = knn(train = PimaIndiansDiabetes[,-9], test = PimaIndiansDiabetes[,-9], cl = PimaIndiansDiabetes[,9], k = 5)
+table(knn5_fit, PimaIndiansDiabetes$diabetes)
+
+result[5] = mean(knn5_fit != PimaIndiansDiabetes$diabetes)
+
+# Naive Bayes
+library(e1071)
+nb_fit = naiveBayes(diabetes ~ ., data = PimaIndiansDiabetes)
+nb_pred = predict(nb_fit, newdata = PimaIndiansDiabetes)
+table(nb_pred, PimaIndiansDiabetes$diabetes)
+
+result[6] = mean(nb_pred != PimaIndiansDiabetes$diabetes)
+
+result
+```
+
+From the table it seems that KNN-5 has best prediction for the training data.

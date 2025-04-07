@@ -181,7 +181,7 @@ $$
 \end{pmatrix}.
 $$
 
-Generate a sample of size 1,000 from $X. Then, calculate the probability vector $p(x)$ using the following formula:
+Generate a sample of size 1,000 from $X$. Then, calculate the probability vector $p(x)$ using the following formula:
 $$
 p(x) = \frac{\exp(\beta_0 +
 \beta_1 x_1 + \beta_2 x_2 + \beta_3 x_3+ \beta_4 x_4)}{1+\exp(\beta_0 +
