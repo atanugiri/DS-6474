@@ -19,10 +19,6 @@ where $\epsilon \sim N(0, \sigma^2).$ The input variables, $x_1$ and $x_2$ are i
 
 ### Questions
 1. Take the following parameters: $\beta_0 = 10, \beta_1 =  5, \beta_2 = -2$ and $\sigma = 2$. Generate training data of size $n=50.$
-
-2. Fit the MLR model, and calculate the training root mean square error (RMSE).
-
-3. Generate test data of size 1,000 and evaluate prediction performance. Compare the test RMSE with the model standard deviation (true value of $\sigma$.
 ```{r}
 n_train = 50
 sd = 2
@@ -39,7 +35,7 @@ data = data.frame(y = y, x1 = x1, x2 = x2)
 head(data)
 ```
 
-## Q2.
+2. Fit the MLR model, and calculate the training root mean square error (RMSE).
 ```{r}
 lm_fit = glm(y ~ ., data = data)
 summary(lm_fit)
@@ -49,7 +45,7 @@ head(lm_pred)
 (rmse_train = sqrt(mean((lm_pred - data$y)^2)))
 ```
 
-## Q3.
+3. Generate test data of size 1,000 and evaluate prediction performance. Compare the test RMSE with the model standard deviation (true value of $\sigma$.
 ```{r}
 n_test = 1000
 set.seed(1)
@@ -71,8 +67,11 @@ lm_pred_test = predict(lm_fit, data = data_test)
 RMSE for test data is much higher than model standard deviation.
 
 
-# Setup 2
-## Q1.
+## Setup 2
+Consider PimaIndiansDiabetes diabetes (last column). Hint: use data from the mlbench data(PimaIndiansDiabetes) library in R. The goal is to build a model to predict to load the dataset.
+
+## Questions
+1. Produce some numerical and graphical summaries of this data. Comment on your findings.
 ```{r}
 library(mlbench)
 data(PimaIndiansDiabetes)
@@ -85,12 +84,13 @@ ggpairs(PimaIndiansDiabetes)
 ```
 
 Insulin, pedigree, age predictors are right skewed. Triceps skin fold thickness have value 0 for a lot of observations.
+
 ```{r}
 (sum(PimaIndiansDiabetes$triceps == 0))
 (sum(PimaIndiansDiabetes$triceps > 0))
 ```
 
-## Q2.
+2. Apply different classification algorithms (any 5 from Logistic Regression, LDA, QDA, KNN-10, KNN-5, and Naive Bayes) and compare their performance in training data (you do not need to partition data into training and test sets). Although there are several performance measures for classification, only the confusion matrix and the overall error rate are sufficient for this problem.
 ```{r}
 result = matrix(NA, ncol = 6)
 # colnames(result) = c("Logistic Regression", "LDA", "QDA", "KNN-10", "KNN-5", "Naive Bayes")
