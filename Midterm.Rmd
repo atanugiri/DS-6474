@@ -8,10 +8,21 @@ date: "2025-04-08"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Midterm Exam
 
-# Setup 1
-## Q1.
+## Setup 1
+Consider a multiple linear regression (MLR) model:
+$$
+y = \beta_0 + \beta_1x_1 + \beta_2x_2 + \epsilon,
+$$
+where $\epsilon \sim N(0, \sigma^2).$ The input variables, $x_1$ and $x_2$ are independent and coming from a uniform distribution $U(-3, 3)$
+
+### Questions
+1. Take the following parameters: $\beta_0 = 10, \beta_1 =  5, \beta_2 = -2$ and $\sigma = 2$. Generate training data of size $n=50.$
+
+2. Fit the MLR model, and calculate the training root mean square error (RMSE).
+
+3. Generate test data of size 1,000 and evaluate prediction performance. Compare the test RMSE with the model standard deviation (true value of $\sigma$.
 ```{r}
 n_train = 50
 sd = 2
@@ -27,6 +38,7 @@ y = beta0 + beta1*x1 + beta2*x2 + epsilon
 data = data.frame(y = y, x1 = x1, x2 = x2)
 head(data)
 ```
+
 ## Q2.
 ```{r}
 lm_fit = glm(y ~ ., data = data)
@@ -35,7 +47,6 @@ lm_pred = predict(lm_fit)
 head(lm_pred)
 
 (rmse_train = sqrt(mean((lm_pred - data$y)^2)))
-# print(cat"(training root mean square error: " + rmse_train))
 ```
 
 ## Q3.
@@ -44,7 +55,7 @@ n_test = 1000
 set.seed(1)
 x1 = runif(n_test, min = -3, max = 3)
 x2 = runif(n_test, min = -3, max = 3)
-epsilon = rnorm(n_test, sd = 4)
+epsilon = rnorm(n_test, sd = sd)
 
 beta0 = 10; beta1 = 5; beta2 = -2;
 
