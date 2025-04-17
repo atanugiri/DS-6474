@@ -14,51 +14,62 @@ In the textbook, a classification tree is applied to the Carseats dataset from t
 ## Questions
 a. Split the data set into a training set and a test set.
 ```{r}
+set.seed(1)
 library(ISLR2)
-summary(Carseats)
+n <- nrow(Carseats)
+n_training <- round(n * 0.75)
 
-train_indices = sample(1:nrow(Carseats), nrow(Carseats) * 0.7)
-
-train_data = Carseats[train_indices, ]
-test_data <- Carseats[-train_indices, ]
+index <- sample(n, size = n_training)
+training_data <- Carseats[index, ]
+test_data <- Carseats[-index, ]
 ```
-
 
 b. Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
 ```{r}
 library(tree)
-tree_model <- tree(Sales ~ ., data = train_data)
-plot(tree_model)
-text(tree_model, pretty = 0)
+tree_fit <- tree(Sales ~ ., data = training_data)
+summary(tree_fit)
+```
+These six predictors are used to construct the tree: ShelveLoc, Price, Age, Advertising, Income, CompPrice.
 
-predictions <- predict(tree_model, newdata = test_data)
+The total number of terminal nodes is 16. The training MSE is 2.322.
+```{r}
+plot(tree_fit)
+text(tree_fit, pretty = 0)
 
-mse <- mean((predictions - test_data$Sales)^2)
-print(mse)
+pred_test <- predict(tree_fit, newdata = test_data)
+(test_MSE <- mean((test_data$Sales - pred_test)^2))
 ```
 
 
 c. Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
 ```{r}
-cv_result <- cv.tree(tree_model)
-plot(cv_result$size, cv_result$dev, type = "b",
-     xlab = "Tree Size", ylab = "Deviance (CV Error)")
-
-best_size <- cv_result$size[which.min(cv_result$dev)]
-cat("Optimal tree size:", best_size, "\n")
-
-pruned_tree <- prune.tree(tree_model, best = best_size)
-plot(pruned_tree)
-text(pruned_tree, pretty = 0)
-
-pred_pruned <- predict(pruned_tree, newdata = test_data)
-mse_pruned <- mean((pred_pruned - test_data$Sales)^2)
-cat("Test MSE (pruned tree):", mse_pruned, "\n")
-
-mse_unpruned <- mean((predictions - test_data$Sales)^2)
-cat("Test MSE (original tree):", mse_unpruned, "\n")
-
+(cv_tree <- cv.tree(tree_fit, FUN = prune.tree))
+plot(cv_tree$size, cv_tree$dev, xlab = "Tree Size", ylab = "Deviance", type = "b")
 ```
+The size of optimum pruned tree:
+```{r}
+(opt_size <- cv_tree$size[which.min(cv_tree$dev)])
+```
+However, one can consider a tree of size 4, as it’s performance is almost the same as the optimum pruned tree.
+```{r}
+tree_pruned <- prune.tree(tree_fit, best = opt_size)
+summary(tree_pruned)
+```
+Here is the test MSE:
+```{r}
+pred_test_pruned <- predict(tree_pruned, newdata = test_data)
+(test_MSE <- mean((test_data$Sales - pred_test_pruned)^2))
+```
+The test MSE is increased after pruning. So, we do not see any advantage in pruning for this data set.
+
+Let’s check the test error with the tree of size 4:
+```{r}
+tree_pruned <- prune.tree(tree_fit, best = 4)
+pred_test_pruned <- predict(tree_pruned, newdata = test_data)
+(test_MSE <- mean((test_data$Sales - pred_test_pruned)^2))
+```
+The test MSE is slightly lower than the best-pruned tree suggested by the cross-validation. However, its performance is still poor compared to the full tree.
 
 
 # Setup 2: Classification Tree (Orange Juice Data)
@@ -68,8 +79,10 @@ This problem involves the OJ data set which is part of the ISLR2 package.
 a. Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
 ```{r}
 library(ISLR2)
+library(tree)
 summary(OJ)
 
+set.seed(17)
 train_indices <- sample(1:nrow(OJ), 800)
 
 train_data <- OJ[train_indices, ]
@@ -82,30 +95,22 @@ tree_oj <- tree(Purchase ~ ., data = train_data)
 
 summary(tree_oj)
 ```
-"LoyalCH", "PriceDiff", "DiscCH" were the most informative predictors for classifying Purchase.
-Training error rate: 0.1638.
-The tree ends in 8 terminal nodes.
+"LoyalCH", "SalePriceMM", PriceDiff", "DiscCH" were the most informative predictors for classifying Purchase.
+Training error rate: 0.185
+The tree ends in 7 terminal nodes.
 
 c. Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
 ```{r}
 tree_oj
 ```
-13) LoyalCH > 0.75969 51 28.04 CH ( 0.92157 0.07843 ) *
-Split condition: LoyalCH > 0.75969
-n: 51 observations fall into this node
-Deviance: 28.04
-Predicted class: CH
-Class probabilities:
-CH: 92.16%
-MM: 7.84%
-Terminal node: * (no further splits)
+For node 10: $0.05 <$ LoyalCH $< 0.48$ and SalePriceMM $< 2.04$. 132 observations. 20% CH and 80% MM. Deviance = 132.So, the predicted value is MM.
 
 d. Create a plot of the tree, and interpret the results.
 ```{r}
 plot(tree_oj)
 text(tree_oj, pretty = 0)
 ```
-<!-- LoyalCH $\lt$ 0.5036 is most important split. Customers with LoyalCH $\lt$ 0.5036 are more likely to purchase MM, while those with LoyalCH $\geq$ 0.5036 lean toward CH. -->
+LoyalCH is most important split. Customers with LoyalCH $<$ 0.48 are more likely to purchase MM, while those with LoyalCH $\geq$ 0.48 lean toward CH. If $0.48 \geq$ LoyalCH $< 0.76$ and PriceDiff $\geq 0.08$ the predicted value is CH.
 
 e. Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
 ```{r}
@@ -120,7 +125,7 @@ cat("Test Error Rate:", round(test_error, 4), "\n")
 
 f. Apply the cv.tree() function to the training set in order to determine the optimal tree size.
 ```{r}
-cv_oj <- cv.tree(tree_oj, FUN = prune.misclass)
+cv_oj <- cv.tree(tree_oj, FUN = prune.tree)
 print(cv_oj)
 ```
 
@@ -128,7 +133,7 @@ g. Produce a plot with tree size on the x-axis and cross-validated classificatio
 ```{r}
 plot(cv_oj$size, cv_oj$dev, type = "b",
      xlab = "Tree Size (Terminal Nodes)",
-     ylab = "CV Misclassification Error",
+     ylab = "Deviance",
      main = "CV Error vs Tree Size")
 ```
 
@@ -140,25 +145,20 @@ cat("Optimal tree size:", optimal_size, "\n")
 
 i. Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not lead to the selection of a pruned tree, then create a pruned tree with five terminal nodes.
 ```{r}
-pruned_tree <- prune.misclass(tree_oj, best = 8)
+pruned_tree <- prune.tree(tree_oj, best = optimal_size)
 plot(pruned_tree)
 text(pruned_tree, pretty = 0)
 title("Pruned Classification Tree")
+summary(pruned_tree)
 ```
 
 j. Compare the training error rates between the pruned and un-pruned trees. Which is higher?
-```{r}
-pred_train_full <- predict(tree_oj, newdata = train_data, type = "class")
-train_error_full <- mean(pred_train_full != train_data$Purchase)
-cat("Training Error (Unpruned Tree):", round(train_error_full, 4), "\n")
-
-pred_train_pruned <- predict(pruned_tree, newdata = train_data, type = "class")
-train_error_pruned <- mean(pred_train_pruned != train_data$Purchase)
-cat("Training Error (Pruned Tree):", round(train_error_pruned, 4), "\n")
-```
+Misclassification error rate: 0.185 for both.
 
 k. Compare the test error rates between the pruned and unpruned trees. Which is higher?
 ```{r}
-Both the pruned and unpruned trees have the same training error rate.
+test_err = mean() 
 ```
+
+Both the pruned and unpruned trees have the same test error rate.
 
