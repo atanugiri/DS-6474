@@ -1,0 +1,61 @@
+---
+title: "HW10"
+output: pdf_document
+date: "2025-04-21"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup 1: Car seat Data
+This is a continuation of the previous homework with the Carseats data from the ISLR2 library. We will predict Sales using bagging, random forest, and boosting approaches.
+
+## Questions
+a. Split the data set into a training set and a test set.
+```{r}
+library(ISLR2)
+summary?(Carseats)
+set.seed(123)
+id = sample(1:nrow(Carseats), 0.75*nrow(Carseats))
+
+train_data = Carseats[id,]
+test_data = Carseats[-id,]
+```
+
+b. Use the bagging approach in order to analyze this data. What test MSE do you obtain? Use the importance() function from the randomForest library to determine which variables are most important.
+```{r}
+library(randomForest)
+
+```
+
+
+c. Use random forests to analyze this data. Describe the effect of $m$, the number of variables considered at each split, on the error rate obtained. What test MSE do you obtain? Use the importance() function to determine which variables are most important.
+
+d. Now, apply boosting to the training set. What is the test set MSE for this approach?
+
+
+# Setup 2: Hitters Data
+We now use boosting to predict Salary in the Hitters data set from the ISLR2 package. The boosting has three tuning parameters – shrinkage parameter $\lambda$, number of trees $B$, and interaction depth $d$. We will tune them one by one to optimize the test error.
+
+## Questions
+a. Remove the observations for those whose salary information is unknown, and then log-transform the salaries. (Taking a log transformation reduces the effect of outliers when we calculate the residual or RSS.)
+
+b. Create a training set consisting of 200 observations, and a test set consisting of the remaining observations.
+
+c. Perform boosting on the training set with depth $d=1$ and $B=1000$ trees for a range of values of the shrinkage parameter $\lambda$. Produce a plot with different shrinkage values on the $x-$-axis and the corresponding training set MSE on the $y$-axis. (Consider log or power scale for the $x$ axis. For example, take $\lambda=10^{-x}$, where x = seq(10, 0.1, by=-0.1))
+
+d. Produce a plot with different shrinkage values on the $x$-axis and the corresponding test set MSE on the $y$-axis. (For better understanding, plot it on the previous figure.) What is your recommended value of the shrinkage parameter? You may use the ‘elbow’ method, if needed.
+
+e. In the previous two questions, we tuned $\lambda$ keeping $d$ and $B$ fixed. Now, we will tune $B$, keeping $d=1$ and $\lambda$ as selected from the previous question. Take an appropriate range of $B$, say 100 to 5,000 with an increment of 100, and tune $B$ following the steps in previous two questions.
+
+f. Now, for fixed values of $B$ and $\lambda$, as obtained from the previous steps, describe the effect of the depth parameter $d$, and tune it properly. You may take $d$ from 1 to 10.
+
+\textbf{Note:} You may apply another round of iterations to tune the parameters further. Because in the first step, we fixed $d=1$ and $B=1000$ to tune $\lambda$. However, we may get a better $\lambda$ if we tune it using $d=d_{opt}$ and $B=B_{opt}$, where $d_{opt}$ and $B_{opt}$, are the ‘optimum’ values of $d$ and $B$, respectively, from the first iteration.
+
+g. Finally, use the selected tuning parameters to fit a boosted model to the training data. Which variables appear to be the most important predictors in your final boosted model? What is the test set MSE?
+
+```{r}
+
+```
+
