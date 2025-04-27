@@ -1,7 +1,6 @@
 ---
 title: "HW10"
 output: pdf_document
-date: "2025-04-21"
 ---
 
 ```{r setup, include=FALSE}
@@ -15,7 +14,7 @@ This is a continuation of the previous homework with the Carseats data from the 
 a. Split the data set into a training set and a test set.
 ```{r}
 library(ISLR2)
-summary?(Carseats)
+summary(Carseats)
 set.seed(123)
 id = sample(1:nrow(Carseats), 0.75*nrow(Carseats))
 
@@ -27,12 +26,68 @@ b. Use the bagging approach in order to analyze this data. What test MSE do you 
 ```{r}
 library(randomForest)
 
+bag_model = randomForest(Sales ~ ., data = train_data, mtry = ncol(train_data), importance = TRUE)
+
+# Predict on test data
+pred_bag = predict(bag_model, newdata = test_data)
+
+# Compute Test MSE
+mse_bag = mean((pred_bag - test_data$Sales)^2)
+print(paste("Test MSE (Bagging):", round(mse_bag, 3)))
+
+# Variable importance
+importance(bag_model)
 ```
 
 
 c. Use random forests to analyze this data. Describe the effect of $m$, the number of variables considered at each split, on the error rate obtained. What test MSE do you obtain? Use the importance() function to determine which variables are most important.
 
+```{r}
+# Try different mtry values and compute test MSEs
+mtry_values = seq(1, ncol(Carseats)-1)
+test_mse = numeric(length(mtry_values))
+
+set.seed(123)
+
+for (i in seq_along(mtry_values)) {
+  rf_model = randomForest(Sales ~ ., data = train_data, mtry = mtry_values[i], importance = TRUE)
+  pred_rf = predict(rf_model, newdata = test_data)
+  test_mse[i] = mean((pred_rf - test_data$Sales)^2)
+}
+
+# Plot Test MSE vs mtry
+plot(mtry_values, test_mse, type = "b", pch = 19, col = "blue",
+     xlab = "mtry (number of variables per split)",
+     ylab = "Test MSE", main = "Effect of mtry on Test MSE")
+
+(mtry_opt = mtry_values[which.min(test_mse)])
+
+opt_rf = randomForest(Sales ~ ., data = train_data, mtry = mtry_opt, importance = TRUE)
+
+importance(opt_rf)
+```
+
 d. Now, apply boosting to the training set. What is the test set MSE for this approach?
+```{r}
+library(gbm)
+
+set.seed(123)
+boost_model = gbm(Sales ~ ., 
+                  data = train_data, 
+                  distribution = "gaussian", 
+                  n.trees = 5000,
+                  shrinkage = 0.01)
+
+# Predict on test data
+pred_boost = predict(boost_model, newdata = test_data, n.trees = 5000)
+
+# Compute Test MSE
+mse_boost = mean((pred_boost - test_data$Sales)^2)
+print(paste("Test MSE (Boosting):", round(mse_boost, 3)))
+
+# Variable importance
+summary(boost_model)
+```
 
 
 # Setup 2: Hitters Data
