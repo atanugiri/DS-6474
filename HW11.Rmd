@@ -10,28 +10,20 @@ knitr::opts_chunk$set(echo = TRUE)
 
 1a.
 ```{r}
-iris_data = iris
-iris_data$Species = NULL
-head(iris_data)
+data = iris
+data$Species = NULL
+head(data)
 ```
+
 b.
 ```{r}
-set.seed(123)
-
-# Store total within-cluster sum of squares (WSS)
-wss <- numeric(5)
-
-# Loop over K = 1 to 5
-for (k in 1:5) {
-  kmeans_result <- kmeans(iris_data, centers = k, nstart = 25)
-  wss[k] <- kmeans_result$tot.withinss
+k <- 5
+WCV <- rep(NA, k)  #within-cluster variation
+for (i in 1:k) {
+  k_means_out <- kmeans(data, centers = i, nstart = 20)
+  WCV[i] <- k_means_out$tot.withinss
 }
-
-# Plot the Elbow plot
-plot(1:5, wss, type = "b", pch = 19,
-     xlab = "Number of Clusters K",
-     ylab = "Total Within-Cluster Sum of Squares (WSS)",
-     main = "Elbow Method for Choosing K")
+plot(WCV, xlab = "Number of clusters", type = "b")
 ```
 
 From the elbow method, k = 3 looks best.
@@ -40,50 +32,21 @@ c.
 ```{r}
 # Perform K-means with K = 3
 set.seed(123)
-kmeans_result <- kmeans(iris_data, centers = 3, nstart = 20)
-
-# Add cluster and species info to the dataset
-iris_clustered <- iris_data
-iris_clustered$Cluster <- as.factor(kmeans_result$cluster)
-iris_clustered$Species <- iris$Species  # true labels
-
-# Load library
-library(GGally)
-
-# Plot: Color by Cluster
-ggpairs(iris_clustered, columns = 1:4, aes(color = Cluster, alpha = 0.6)) +
-  ggtitle("Pair Plot Colored by K-means Clusters")
-
-# Plot: Color by True Species
-ggpairs(iris_clustered, columns = 1:4, aes(color = Species, alpha = 0.6)) +
-  ggtitle("Pair Plot Colored by True Species")
+k_best <- 3
+k_means_out <- kmeans(data, centers = k_best, nstart = 20)
+plot(as.data.frame(data), col = k_means_out$cluster, pch = as.numeric(as.factor(iris$Species)))
 ```
 
 d.
 ```{r}
-# Perform PCA
-pca_result <- prcomp(iris_data)
+pca_out <- prcomp(data)
+PC1 <- pca_out$x[, 1]
+PC2 <- pca_out$x[, 2]
+plot(PC1, PC2, col = k_means_out$cluster, pch = as.numeric(as.factor(iris$Species)),
+  main = "K-means Clustering", xlab = "First Principal Component", ylab = "Second Principal Component")
 
-# Create a data frame with the first two principal components
-pca_data <- data.frame(PC1 = pca_result$x[, 1],
-                       PC2 = pca_result$x[, 2],
-                       Cluster = as.factor(kmeans_result$cluster),
-                       Species = iris$Species)
-
-# Load ggplot2
-library(ggplot2)
-
-# Plot PCA results colored by K-means Cluster
-ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster)) +
-  geom_point(size = 2, alpha = 0.8) +
-  labs(title = "PCA - Colored by K-means Clusters") +
-  theme_minimal()
-
-# Plot PCA results colored by True Species
-ggplot(pca_data, aes(x = PC1, y = PC2, color = Species)) +
-  geom_point(size = 2, alpha = 0.8) +
-  labs(title = "PCA - Colored by True Species") +
-  theme_minimal()
+legend("topright", legend = levels(as.factor(iris$Species)), pch = 1:3)
+legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, lty = 1)
 ```
 
 e.
@@ -92,7 +55,7 @@ e.
 table_cluster_species <- table(kmeans_result$cluster, iris$Species)
 print(table_cluster_species)
 
-# Define the Best_Confusion_Matrix function (you already provided)
+# Define the Best_Confusion_Matrix function
 Best_Confusion_Matrix <- function(Confusion_Matrix) {
   library(combinat)
   x <- as.matrix(Confusion_Matrix)
@@ -127,19 +90,17 @@ cat(sprintf("\nAccuracy: %.4f\n", result$val))
 
 f.
 ```{r}
-# Calculate the distance matrix
-dist_iris <- dist(iris_data)
+cluster_complete <- hclust(dist(data), method = "complete")
+cluster_average <- hclust(dist(data), method = "average")
+cluster_single <- hclust(dist(data), method = "single")
 
-# Perform hierarchical clustering
-hc_complete <- hclust(dist_iris, method = "complete")
-hc_average  <- hclust(dist_iris, method = "average")
-hc_single   <- hclust(dist_iris, method = "single")
-
-# Cut into 3 clusters (because we decided K=3 earlier)
-cluster_complete <- cutree(hc_complete, k = 3)
-cluster_average  <- cutree(hc_average, k = 3)
-cluster_single   <- cutree(hc_single, k = 3)
+par(mfrow = c(1, 3))
+plot(cluster_complete, main = "Complete Linkage", xlab = "", sub = "", cex = 0.9)
+plot(cluster_average, main = "Average Linkage", xlab = "", sub = "", cex = 0.9)
+plot(cluster_single, main = "Single Linkage", xlab = "", sub = "", cex = 0.9)
 ```
+
+The complete, average, and single linkages suggest six, four, and two clusters, respectively. However, we will consider three clusters for all cases for simplicity and ease of comparison.
 
 ```{r}
 # Add clustering results to PCA data
