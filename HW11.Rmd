@@ -51,41 +51,33 @@ legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, l
 
 e.
 ```{r}
-# Create confusion matrix between K-means cluster assignments and true species
-table_cluster_species <- table(kmeans_result$cluster, iris$Species)
-print(table_cluster_species)
-
-# Define the Best_Confusion_Matrix function
 Best_Confusion_Matrix <- function(Confusion_Matrix) {
+  # Computes the best confusion matrix by permuting the rows
   library(combinat)
   x <- as.matrix(Confusion_Matrix)
   n <- sum(x)  # sample size
   p <- nrow(x)  # number of features
   if (ncol(x) != p)
     stop("x must be a square matrix.")
-  
+
   perm_vec <- permn(1:p)  # all permutations of 1:p
   p_fact <- length(perm_vec)  # p factorial
   accuracy_val <- rep(NA, p_fact)
-  
+
   # checking
-  for (i in 1:p_fact) accuracy_val[i] <- sum(diag(x[perm_vec[[i]], ])) / n
-  
+  for (i in 1:p_fact) accuracy_val[i] <- sum(diag(x[perm_vec[[i]], ]))/n
+
   best_accuracy_index <- which.max(accuracy_val)
   best_accuracy_val <- accuracy_val[best_accuracy_index]
   best_Conf_Mat <- x[perm_vec[[best_accuracy_index]], ]
-  
+
   return(list(x = best_Conf_Mat, val = best_accuracy_val))
 }
+```
 
-# Apply it
-result <- Best_Confusion_Matrix(table_cluster_species)
-
-# Print the best confusion matrix and accuracy
-cat("Best Confusion Matrix:\n")
-print(result$x)
-
-cat(sprintf("\nAccuracy: %.4f\n", result$val))
+```{r}
+confusioin_mat <- table(k_means_out$cluster, iris$Species)
+Best_Confusion_Matrix(confusioin_mat)
 ```
 
 f.
