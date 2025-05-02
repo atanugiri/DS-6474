@@ -8,14 +8,22 @@ date: "2025-04-28"
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-1a.
+# Setup: Iris Data
+We will analyze Fisher’s Iris data using different clustering algorithms. It is a classification problem, as the flowers are grouped into three species. So, we will not use the species variable in the unsupervised learning. However, we will compare the performance of different methods based on the known labels.
+
+## Without Scalling
+
+### Question (a)
+Load the data, named iris from base R. Remove the last column Species. Do not center or scale the data.
+
 ```{r}
 data = iris
 data$Species = NULL
 head(data)
 ```
 
-b.
+### Question (b)
+Perform the K-means clustering algorithm for different values $K$, the number of clusters, say 1 to 5. How many clusters do you recommend? Use this value in the following three questions.
 ```{r}
 k <- 5
 WCV <- rep(NA, k)  #within-cluster variation
@@ -28,7 +36,8 @@ plot(WCV, xlab = "Number of clusters", type = "b")
 
 From the elbow method, k = 3 looks best.
 
-c.
+### Question (c)
+Use the pair plots and label the clusters. Also, label observations based on the species.
 ```{r}
 # Perform K-means with K = 3
 set.seed(123)
@@ -37,7 +46,8 @@ k_means_out <- kmeans(data, centers = k_best, nstart = 20)
 plot(as.data.frame(data), col = k_means_out$cluster, pch = as.numeric(as.factor(iris$Species)))
 ```
 
-d.
+### Question (d)
+In high-dimensional data, the pair plots will not be convenient. So, use one or two plots using the principal components.
 ```{r}
 pca_out <- prcomp(data)
 PC1 <- pca_out$x[, 1]
@@ -49,7 +59,8 @@ legend("topright", legend = levels(as.factor(iris$Species)), pch = 1:3)
 legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, lty = 1)
 ```
 
-e.
+### Question (e)
+Calculate the confusion matrix based on the species variable. Also, compute a measure of accuracy. Note that the clusters may come in any order. So you need to consider permuting the rows of the confusion matrix to find the accuracy of clustering.
 ```{r}
 Best_Confusion_Matrix <- function(Confusion_Matrix) {
   # Computes the best confusion matrix by permuting the rows
@@ -80,7 +91,8 @@ confusioin_mat <- table(k_means_out$cluster, iris$Species)
 Best_Confusion_Matrix(confusioin_mat)
 ```
 
-f.
+### Question (f)
+Use hierarchical clustering with complete, average, and single linkages. Select the best cluster from each of these methods. Visualize the clusters using the first two principal components (as in d) and find the accuracy measures (as in e).
 ```{r}
 cluster_complete <- hclust(dist(data), method = "complete")
 cluster_average <- hclust(dist(data), method = "average")
@@ -94,249 +106,249 @@ plot(cluster_single, main = "Single Linkage", xlab = "", sub = "", cex = 0.9)
 
 The complete, average, and single linkages suggest six, four, and two clusters, respectively. However, we will consider three clusters for all cases for simplicity and ease of comparison.
 
-```{r}
-# Add clustering results to PCA data
-pca_data$Cluster_Complete <- as.factor(cluster_complete)
-pca_data$Cluster_Average  <- as.factor(cluster_average)
-pca_data$Cluster_Single   <- as.factor(cluster_single)
+<!-- ```{r} -->
+<!-- # Add clustering results to PCA data -->
+<!-- pca_data$Cluster_Complete <- as.factor(cluster_complete) -->
+<!-- pca_data$Cluster_Average  <- as.factor(cluster_average) -->
+<!-- pca_data$Cluster_Single   <- as.factor(cluster_single) -->
 
-# Plot Complete Linkage
-ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Complete)) +
-  geom_point(size = 2, alpha = 0.8) +
-  labs(title = "Hierarchical Clustering - Complete Linkage") +
-  theme_minimal()
+<!-- # Plot Complete Linkage -->
+<!-- ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Complete)) + -->
+<!--   geom_point(size = 2, alpha = 0.8) + -->
+<!--   labs(title = "Hierarchical Clustering - Complete Linkage") + -->
+<!--   theme_minimal() -->
 
-# Plot Average Linkage
-ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Average)) +
-  geom_point(size = 2, alpha = 0.8) +
-  labs(title = "Hierarchical Clustering - Average Linkage") +
-  theme_minimal()
+<!-- # Plot Average Linkage -->
+<!-- ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Average)) + -->
+<!--   geom_point(size = 2, alpha = 0.8) + -->
+<!--   labs(title = "Hierarchical Clustering - Average Linkage") + -->
+<!--   theme_minimal() -->
 
-# Plot Single Linkage
-ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Single)) +
-  geom_point(size = 2, alpha = 0.8) +
-  labs(title = "Hierarchical Clustering - Single Linkage") +
-  theme_minimal()
-```
+<!-- # Plot Single Linkage -->
+<!-- ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Single)) + -->
+<!--   geom_point(size = 2, alpha = 0.8) + -->
+<!--   labs(title = "Hierarchical Clustering - Single Linkage") + -->
+<!--   theme_minimal() -->
+<!-- ``` -->
 
-```{r}
-# Confusion matrices
-table_complete <- table(cluster_complete, iris$Species)
-table_average  <- table(cluster_average, iris$Species)
-table_single   <- table(cluster_single, iris$Species)
+<!-- ```{r} -->
+<!-- # Confusion matrices -->
+<!-- table_complete <- table(cluster_complete, iris$Species) -->
+<!-- table_average  <- table(cluster_average, iris$Species) -->
+<!-- table_single   <- table(cluster_single, iris$Species) -->
 
-# Accuracy calculations using Best_Confusion_Matrix
-result_complete <- Best_Confusion_Matrix(table_complete)
-result_average  <- Best_Confusion_Matrix(table_average)
-result_single   <- Best_Confusion_Matrix(table_single)
+<!-- # Accuracy calculations using Best_Confusion_Matrix -->
+<!-- result_complete <- Best_Confusion_Matrix(table_complete) -->
+<!-- result_average  <- Best_Confusion_Matrix(table_average) -->
+<!-- result_single   <- Best_Confusion_Matrix(table_single) -->
 
-# Print results
-cat("Complete Linkage - Best Confusion Matrix:\n")
-print(result_complete$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_complete$val))
+<!-- # Print results -->
+<!-- cat("Complete Linkage - Best Confusion Matrix:\n") -->
+<!-- print(result_complete$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_complete$val)) -->
 
-cat("Average Linkage - Best Confusion Matrix:\n")
-print(result_average$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_average$val))
+<!-- cat("Average Linkage - Best Confusion Matrix:\n") -->
+<!-- print(result_average$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_average$val)) -->
 
-cat("Single Linkage - Best Confusion Matrix:\n")
-print(result_single$x)
-cat(sprintf("Accuracy: %.4f\n", result_single$val))
-```
+<!-- cat("Single Linkage - Best Confusion Matrix:\n") -->
+<!-- print(result_single$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n", result_single$val)) -->
+<!-- ``` -->
 
-g.
-```{r}
-# Standardize (scale) the data
-iris_scaled <- scale(iris_data)
+<!-- g. -->
+<!-- ```{r} -->
+<!-- # Standardize (scale) the data -->
+<!-- iris_scaled <- scale(iris_data) -->
 
-head(iris_scaled)
-```
+<!-- head(iris_scaled) -->
+<!-- ``` -->
 
-```{r}
-set.seed(123)
-wss_scaled <- numeric(5)
+<!-- ```{r} -->
+<!-- set.seed(123) -->
+<!-- wss_scaled <- numeric(5) -->
 
-for (k in 1:5) {
-  kmeans_result_scaled <- kmeans(iris_scaled, centers = k, nstart = 25)
-  wss_scaled[k] <- kmeans_result_scaled$tot.withinss
-}
+<!-- for (k in 1:5) { -->
+<!--   kmeans_result_scaled <- kmeans(iris_scaled, centers = k, nstart = 25) -->
+<!--   wss_scaled[k] <- kmeans_result_scaled$tot.withinss -->
+<!-- } -->
 
-# Elbow plot
-plot(1:5, wss_scaled, type = "b", pch = 19,
-     xlab = "Number of Clusters K (scaled)",
-     ylab = "Total WSS (scaled)",
-     main = "Elbow Method (scaled data)")
-```
+<!-- # Elbow plot -->
+<!-- plot(1:5, wss_scaled, type = "b", pch = 19, -->
+<!--      xlab = "Number of Clusters K (scaled)", -->
+<!--      ylab = "Total WSS (scaled)", -->
+<!--      main = "Elbow Method (scaled data)") -->
+<!-- ``` -->
 
-```{r}
-# PCA
-pca_result_scaled <- prcomp(iris_scaled)
+<!-- ```{r} -->
+<!-- # PCA -->
+<!-- pca_result_scaled <- prcomp(iris_scaled) -->
 
-# Create PCA dataframe
-pca_data_scaled <- data.frame(PC1 = pca_result_scaled$x[, 1],
-                              PC2 = pca_result_scaled$x[, 2])
-```
+<!-- # Create PCA dataframe -->
+<!-- pca_data_scaled <- data.frame(PC1 = pca_result_scaled$x[, 1], -->
+<!--                               PC2 = pca_result_scaled$x[, 2]) -->
+<!-- ``` -->
 
-```{r}
-# K-means clustering with K=3
-set.seed(123)
-kmeans_scaled_final <- kmeans(iris_scaled, centers = 3, nstart = 25)
+<!-- ```{r} -->
+<!-- # K-means clustering with K=3 -->
+<!-- set.seed(123) -->
+<!-- kmeans_scaled_final <- kmeans(iris_scaled, centers = 3, nstart = 25) -->
 
-# Confusion matrix
-table_kmeans_scaled <- table(kmeans_scaled_final$cluster, iris$Species)
+<!-- # Confusion matrix -->
+<!-- table_kmeans_scaled <- table(kmeans_scaled_final$cluster, iris$Species) -->
 
-# Best confusion matrix and accuracy
-result_kmeans_scaled <- Best_Confusion_Matrix(table_kmeans_scaled)
+<!-- # Best confusion matrix and accuracy -->
+<!-- result_kmeans_scaled <- Best_Confusion_Matrix(table_kmeans_scaled) -->
 
-cat("K-means (scaled) Best Confusion Matrix:\n")
-print(result_kmeans_scaled$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_kmeans_scaled$val))
-```
+<!-- cat("K-means (scaled) Best Confusion Matrix:\n") -->
+<!-- print(result_kmeans_scaled$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_kmeans_scaled$val)) -->
+<!-- ``` -->
 
-```{r}
-# Distance matrix
-dist_iris_scaled <- dist(iris_scaled)
+<!-- ```{r} -->
+<!-- # Distance matrix -->
+<!-- dist_iris_scaled <- dist(iris_scaled) -->
 
-# Hierarchical clustering
-hc_complete_scaled <- hclust(dist_iris_scaled, method = "complete")
-hc_average_scaled  <- hclust(dist_iris_scaled, method = "average")
-hc_single_scaled   <- hclust(dist_iris_scaled, method = "single")
+<!-- # Hierarchical clustering -->
+<!-- hc_complete_scaled <- hclust(dist_iris_scaled, method = "complete") -->
+<!-- hc_average_scaled  <- hclust(dist_iris_scaled, method = "average") -->
+<!-- hc_single_scaled   <- hclust(dist_iris_scaled, method = "single") -->
 
-# Cut into 3 clusters
-cluster_complete_scaled <- cutree(hc_complete_scaled, k = 3)
-cluster_average_scaled  <- cutree(hc_average_scaled, k = 3)
-cluster_single_scaled   <- cutree(hc_single_scaled, k = 3)
+<!-- # Cut into 3 clusters -->
+<!-- cluster_complete_scaled <- cutree(hc_complete_scaled, k = 3) -->
+<!-- cluster_average_scaled  <- cutree(hc_average_scaled, k = 3) -->
+<!-- cluster_single_scaled   <- cutree(hc_single_scaled, k = 3) -->
 
-# Confusion matrices
-table_complete_scaled <- table(cluster_complete_scaled, iris$Species)
-table_average_scaled  <- table(cluster_average_scaled, iris$Species)
-table_single_scaled   <- table(cluster_single_scaled, iris$Species)
+<!-- # Confusion matrices -->
+<!-- table_complete_scaled <- table(cluster_complete_scaled, iris$Species) -->
+<!-- table_average_scaled  <- table(cluster_average_scaled, iris$Species) -->
+<!-- table_single_scaled   <- table(cluster_single_scaled, iris$Species) -->
 
-# Accuracy
-result_complete_scaled <- Best_Confusion_Matrix(table_complete_scaled)
-result_average_scaled  <- Best_Confusion_Matrix(table_average_scaled)
-result_single_scaled   <- Best_Confusion_Matrix(table_single_scaled)
+<!-- # Accuracy -->
+<!-- result_complete_scaled <- Best_Confusion_Matrix(table_complete_scaled) -->
+<!-- result_average_scaled  <- Best_Confusion_Matrix(table_average_scaled) -->
+<!-- result_single_scaled   <- Best_Confusion_Matrix(table_single_scaled) -->
 
-# Print results
-cat("Complete Linkage (scaled) Best Confusion Matrix:\n")
-print(result_complete_scaled$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_complete_scaled$val))
+<!-- # Print results -->
+<!-- cat("Complete Linkage (scaled) Best Confusion Matrix:\n") -->
+<!-- print(result_complete_scaled$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_complete_scaled$val)) -->
 
-cat("Average Linkage (scaled) Best Confusion Matrix:\n")
-print(result_average_scaled$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_average_scaled$val))
+<!-- cat("Average Linkage (scaled) Best Confusion Matrix:\n") -->
+<!-- print(result_average_scaled$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_average_scaled$val)) -->
 
-cat("Single Linkage (scaled) Best Confusion Matrix:\n")
-print(result_single_scaled$x)
-cat(sprintf("Accuracy: %.4f\n", result_single_scaled$val))
-```
+<!-- cat("Single Linkage (scaled) Best Confusion Matrix:\n") -->
+<!-- print(result_single_scaled$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n", result_single_scaled$val)) -->
+<!-- ``` -->
 
-```{r}
-# Create a data frame manually
-summary_table <- data.frame(
-  Method = c("K-means Clustering", "Hierarchical (Complete Linkage)", 
-             "Hierarchical (Average Linkage)", "Hierarchical (Single Linkage)"),
-  Unscaled_Accuracy = c(result$val, result_complete$val, 
-                        result_average$val, result_single$val),
-  Scaled_Accuracy = c(result_kmeans_scaled$val, result_complete_scaled$val, 
-                      result_average_scaled$val, result_single_scaled$val)
-)
+<!-- ```{r} -->
+<!-- # Create a data frame manually -->
+<!-- summary_table <- data.frame( -->
+<!--   Method = c("K-means Clustering", "Hierarchical (Complete Linkage)",  -->
+<!--              "Hierarchical (Average Linkage)", "Hierarchical (Single Linkage)"), -->
+<!--   Unscaled_Accuracy = c(result$val, result_complete$val,  -->
+<!--                         result_average$val, result_single$val), -->
+<!--   Scaled_Accuracy = c(result_kmeans_scaled$val, result_complete_scaled$val,  -->
+<!--                       result_average_scaled$val, result_single_scaled$val) -->
+<!-- ) -->
 
-print(summary_table)
-```
+<!-- print(summary_table) -->
+<!-- ``` -->
 
-h.
-```{r}
-# PCA on scaled data
-pca_scaled <- prcomp(iris_scaled)
+<!-- h. -->
+<!-- ```{r} -->
+<!-- # PCA on scaled data -->
+<!-- pca_scaled <- prcomp(iris_scaled) -->
 
-# Variance explained by each PC
-var_explained <- pca_scaled$sdev^2 / sum(pca_scaled$sdev^2)
+<!-- # Variance explained by each PC -->
+<!-- var_explained <- pca_scaled$sdev^2 / sum(pca_scaled$sdev^2) -->
 
-# Cumulative variance explained
-cum_var_explained <- cumsum(var_explained)
+<!-- # Cumulative variance explained -->
+<!-- cum_var_explained <- cumsum(var_explained) -->
 
-# Plot
-plot(cum_var_explained, xlab = "Number of Principal Components",
-     ylab = "Cumulative Proportion of Variance Explained",
-     type = "b", pch = 19,
-     main = "Cumulative Variance Explained by PCs")
-abline(h = 0.9, col = "red", lty = 2)  # optional: 90% variance line
-```
+<!-- # Plot -->
+<!-- plot(cum_var_explained, xlab = "Number of Principal Components", -->
+<!--      ylab = "Cumulative Proportion of Variance Explained", -->
+<!--      type = "b", pch = 19, -->
+<!--      main = "Cumulative Variance Explained by PCs") -->
+<!-- abline(h = 0.9, col = "red", lty = 2)  # optional: 90% variance line -->
+<!-- ``` -->
 
-```{r}
-# Approximated data using first 2 PCs
-approx_data <- pca_scaled$x[, 1:2]
-```
+<!-- ```{r} -->
+<!-- # Approximated data using first 2 PCs -->
+<!-- approx_data <- pca_scaled$x[, 1:2] -->
+<!-- ``` -->
 
-```{r}
-set.seed(123)
-wss_approx <- numeric(5)
+<!-- ```{r} -->
+<!-- set.seed(123) -->
+<!-- wss_approx <- numeric(5) -->
 
-for (k in 1:5) {
-  kmeans_approx <- kmeans(approx_data, centers = k, nstart = 25)
-  wss_approx[k] <- kmeans_approx$tot.withinss
-}
+<!-- for (k in 1:5) { -->
+<!--   kmeans_approx <- kmeans(approx_data, centers = k, nstart = 25) -->
+<!--   wss_approx[k] <- kmeans_approx$tot.withinss -->
+<!-- } -->
 
-# Elbow Plot
-plot(1:5, wss_approx, type = "b", pch = 19,
-     xlab = "Number of Clusters K (Approximated Data)",
-     ylab = "Total WSS",
-     main = "Elbow Method (Approximated Data)")
-```
+<!-- # Elbow Plot -->
+<!-- plot(1:5, wss_approx, type = "b", pch = 19, -->
+<!--      xlab = "Number of Clusters K (Approximated Data)", -->
+<!--      ylab = "Total WSS", -->
+<!--      main = "Elbow Method (Approximated Data)") -->
+<!-- ``` -->
 
-```{r}
-# K-means with K=3
-set.seed(123)
-kmeans_approx_final <- kmeans(approx_data, centers = 3, nstart = 25)
+<!-- ```{r} -->
+<!-- # K-means with K=3 -->
+<!-- set.seed(123) -->
+<!-- kmeans_approx_final <- kmeans(approx_data, centers = 3, nstart = 25) -->
 
-# Confusion matrix
-table_kmeans_approx <- table(kmeans_approx_final$cluster, iris$Species)
+<!-- # Confusion matrix -->
+<!-- table_kmeans_approx <- table(kmeans_approx_final$cluster, iris$Species) -->
 
-# Best matching confusion matrix and accuracy
-result_kmeans_approx <- Best_Confusion_Matrix(table_kmeans_approx)
+<!-- # Best matching confusion matrix and accuracy -->
+<!-- result_kmeans_approx <- Best_Confusion_Matrix(table_kmeans_approx) -->
 
-cat("K-means (approximated) Best Confusion Matrix:\n")
-print(result_kmeans_approx$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_kmeans_approx$val))
-```
+<!-- cat("K-means (approximated) Best Confusion Matrix:\n") -->
+<!-- print(result_kmeans_approx$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_kmeans_approx$val)) -->
+<!-- ``` -->
 
-```{r}
-# Distance matrix
-dist_approx <- dist(approx_data)
+<!-- ```{r} -->
+<!-- # Distance matrix -->
+<!-- dist_approx <- dist(approx_data) -->
 
-# Hierarchical clustering
-hc_complete_approx <- hclust(dist_approx, method = "complete")
-hc_average_approx  <- hclust(dist_approx, method = "average")
-hc_single_approx   <- hclust(dist_approx, method = "single")
+<!-- # Hierarchical clustering -->
+<!-- hc_complete_approx <- hclust(dist_approx, method = "complete") -->
+<!-- hc_average_approx  <- hclust(dist_approx, method = "average") -->
+<!-- hc_single_approx   <- hclust(dist_approx, method = "single") -->
 
-# Cut into 3 clusters
-cluster_complete_approx <- cutree(hc_complete_approx, k = 3)
-cluster_average_approx  <- cutree(hc_average_approx, k = 3)
-cluster_single_approx   <- cutree(hc_single_approx, k = 3)
+<!-- # Cut into 3 clusters -->
+<!-- cluster_complete_approx <- cutree(hc_complete_approx, k = 3) -->
+<!-- cluster_average_approx  <- cutree(hc_average_approx, k = 3) -->
+<!-- cluster_single_approx   <- cutree(hc_single_approx, k = 3) -->
 
-# Confusion matrices
-table_complete_approx <- table(cluster_complete_approx, iris$Species)
-table_average_approx  <- table(cluster_average_approx, iris$Species)
-table_single_approx   <- table(cluster_single_approx, iris$Species)
+<!-- # Confusion matrices -->
+<!-- table_complete_approx <- table(cluster_complete_approx, iris$Species) -->
+<!-- table_average_approx  <- table(cluster_average_approx, iris$Species) -->
+<!-- table_single_approx   <- table(cluster_single_approx, iris$Species) -->
 
-# Accuracy calculations
-result_complete_approx <- Best_Confusion_Matrix(table_complete_approx)
-result_average_approx  <- Best_Confusion_Matrix(table_average_approx)
-result_single_approx   <- Best_Confusion_Matrix(table_single_approx)
+<!-- # Accuracy calculations -->
+<!-- result_complete_approx <- Best_Confusion_Matrix(table_complete_approx) -->
+<!-- result_average_approx  <- Best_Confusion_Matrix(table_average_approx) -->
+<!-- result_single_approx   <- Best_Confusion_Matrix(table_single_approx) -->
 
-# Print results
-cat("Complete Linkage (approximated) Best Confusion Matrix:\n")
-print(result_complete_approx$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_complete_approx$val))
+<!-- # Print results -->
+<!-- cat("Complete Linkage (approximated) Best Confusion Matrix:\n") -->
+<!-- print(result_complete_approx$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_complete_approx$val)) -->
 
-cat("Average Linkage (approximated) Best Confusion Matrix:\n")
-print(result_average_approx$x)
-cat(sprintf("Accuracy: %.4f\n\n", result_average_approx$val))
+<!-- cat("Average Linkage (approximated) Best Confusion Matrix:\n") -->
+<!-- print(result_average_approx$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n\n", result_average_approx$val)) -->
 
-cat("Single Linkage (approximated) Best Confusion Matrix:\n")
-print(result_single_approx$x)
-cat(sprintf("Accuracy: %.4f\n", result_single_approx$val))
-```
+<!-- cat("Single Linkage (approximated) Best Confusion Matrix:\n") -->
+<!-- print(result_single_approx$x) -->
+<!-- cat(sprintf("Accuracy: %.4f\n", result_single_approx$val)) -->
+<!-- ``` -->
 
-We got very good clustering with 2 PCs.
+<!-- We got very good clustering with 2 PCs. -->
