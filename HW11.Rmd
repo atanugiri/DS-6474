@@ -106,88 +106,76 @@ plot(cluster_single, main = "Single Linkage", xlab = "", sub = "", cex = 0.9)
 
 The complete, average, and single linkages suggest six, four, and two clusters, respectively. However, we will consider three clusters for all cases for simplicity and ease of comparison.
 
-<!-- ```{r} -->
-<!-- # Add clustering results to PCA data -->
-<!-- pca_data$Cluster_Complete <- as.factor(cluster_complete) -->
-<!-- pca_data$Cluster_Average  <- as.factor(cluster_average) -->
-<!-- pca_data$Cluster_Single   <- as.factor(cluster_single) -->
+\textbf{Complete linkage}
+```{r}
+cluster_complete_3 = cutree(cluster_complete, k = 3)
+cc_table = table(cluster_complete_3, iris$Species)
+Best_Confusion_Matrix(cc_table)
 
-<!-- # Plot Complete Linkage -->
-<!-- ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Complete)) + -->
-<!--   geom_point(size = 2, alpha = 0.8) + -->
-<!--   labs(title = "Hierarchical Clustering - Complete Linkage") + -->
-<!--   theme_minimal() -->
+plot(PC1, PC2, col = cluster_complete_3, pch = as.numeric(as.factor(iris$Species)))
+```
 
-<!-- # Plot Average Linkage -->
-<!-- ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Average)) + -->
-<!--   geom_point(size = 2, alpha = 0.8) + -->
-<!--   labs(title = "Hierarchical Clustering - Average Linkage") + -->
-<!--   theme_minimal() -->
+\textbf{Average linkage}
+```{r}
+cluster_average_3 = cutree(cluster_average, k = 3)
+ca_table = table(cluster_average_3, iris$Species)
+Best_Confusion_Matrix(ca_table)
 
-<!-- # Plot Single Linkage -->
-<!-- ggplot(pca_data, aes(x = PC1, y = PC2, color = Cluster_Single)) + -->
-<!--   geom_point(size = 2, alpha = 0.8) + -->
-<!--   labs(title = "Hierarchical Clustering - Single Linkage") + -->
-<!--   theme_minimal() -->
-<!-- ``` -->
+plot(PC1, PC2, col = cluster_average_3, pch = as.numeric(as.factor(iris$Species)))
+```
 
-<!-- ```{r} -->
-<!-- # Confusion matrices -->
-<!-- table_complete <- table(cluster_complete, iris$Species) -->
-<!-- table_average  <- table(cluster_average, iris$Species) -->
-<!-- table_single   <- table(cluster_single, iris$Species) -->
+\textbf{Single linkage}
+```{r}
+cluster_single_3 = cutree(cluster_single, k = 3)
+cs_table = table(cluster_single_3, iris$Species)
+Best_Confusion_Matrix(cs_table)
 
-<!-- # Accuracy calculations using Best_Confusion_Matrix -->
-<!-- result_complete <- Best_Confusion_Matrix(table_complete) -->
-<!-- result_average  <- Best_Confusion_Matrix(table_average) -->
-<!-- result_single   <- Best_Confusion_Matrix(table_single) -->
+plot(PC1, PC2, col = cluster_single_3, pch = as.numeric(as.factor(iris$Species)))
+```
 
-<!-- # Print results -->
-<!-- cat("Complete Linkage - Best Confusion Matrix:\n") -->
-<!-- print(result_complete$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n\n", result_complete$val)) -->
 
-<!-- cat("Average Linkage - Best Confusion Matrix:\n") -->
-<!-- print(result_average$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n\n", result_average$val)) -->
+## With Scalling
+### Question (a)
+Answer the above questions using the scaled data (each variable will have a standard deviation of one). You may skip the scatter plot of question c.
 
-<!-- cat("Single Linkage - Best Confusion Matrix:\n") -->
-<!-- print(result_single$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n", result_single$val)) -->
-<!-- ``` -->
+```{r}
+data = scale(data)
+head(data)
+```
 
-<!-- g. -->
-<!-- ```{r} -->
-<!-- # Standardize (scale) the data -->
-<!-- iris_scaled <- scale(iris_data) -->
+### Question (b)
+Perform the K-means clustering algorithm for different values $K$, the number of clusters, say 1 to 5. How many clusters do you recommend? Use this value in the following three questions.
+```{r}
+set.seed(123)
+wcv = numeric(5)
+for (i in 1:5) {
+  k_means_out = kmeans(data, centers = i, nstart = 20)
+  wcv[i] = k_means_out$tot.withinss
+}
+plot(wcv, type = "b", main = 'Scaled data')
+```
 
-<!-- head(iris_scaled) -->
-<!-- ``` -->
+In the scree plot, the within-cluster variation (WCV) are almost flat after $K=3$. So, we plan to consider three clusters using the elbow method.
+```{r}
+k_best = 3
+k_means_out = kmeans(data, centers = k_best, nstart = 20)
+k_means_out
+```
 
-<!-- ```{r} -->
-<!-- set.seed(123) -->
-<!-- wss_scaled <- numeric(5) -->
+### Question (c)
+Use the pair plots and label the clusters. Also, label observations based on the species.
+```{r}
+pairs(data, col = k_means_out$cluster, pch = as.numeric(iris$Species))
+```
 
-<!-- for (k in 1:5) { -->
-<!--   kmeans_result_scaled <- kmeans(iris_scaled, centers = k, nstart = 25) -->
-<!--   wss_scaled[k] <- kmeans_result_scaled$tot.withinss -->
-<!-- } -->
-
-<!-- # Elbow plot -->
-<!-- plot(1:5, wss_scaled, type = "b", pch = 19, -->
-<!--      xlab = "Number of Clusters K (scaled)", -->
-<!--      ylab = "Total WSS (scaled)", -->
-<!--      main = "Elbow Method (scaled data)") -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- # PCA -->
-<!-- pca_result_scaled <- prcomp(iris_scaled) -->
-
-<!-- # Create PCA dataframe -->
-<!-- pca_data_scaled <- data.frame(PC1 = pca_result_scaled$x[, 1], -->
-<!--                               PC2 = pca_result_scaled$x[, 2]) -->
-<!-- ``` -->
+### Question (d)
+In high-dimensional data, the pair plots will not be convenient. So, use one or two plots using the principal components.
+```{r}
+pc_out = prcomp(data)
+PC1 = pc_out$x[,1]
+PC2 = pc_out$x[,2]
+plot(PC1, PC2, col = k_means_out$cluster, pch = as.numeric(iris$Species))
+```
 
 <!-- ```{r} -->
 <!-- # K-means clustering with K=3 -->
@@ -246,11 +234,11 @@ The complete, average, and single linkages suggest six, four, and two clusters, 
 <!-- ```{r} -->
 <!-- # Create a data frame manually -->
 <!-- summary_table <- data.frame( -->
-<!--   Method = c("K-means Clustering", "Hierarchical (Complete Linkage)",  -->
+<!--   Method = c("K-means Clustering", "Hierarchical (Complete Linkage)", -->
 <!--              "Hierarchical (Average Linkage)", "Hierarchical (Single Linkage)"), -->
-<!--   Unscaled_Accuracy = c(result$val, result_complete$val,  -->
+<!--   Unscaled_Accuracy = c(result$val, result_complete$val, -->
 <!--                         result_average$val, result_single$val), -->
-<!--   Scaled_Accuracy = c(result_kmeans_scaled$val, result_complete_scaled$val,  -->
+<!--   Scaled_Accuracy = c(result_kmeans_scaled$val, result_complete_scaled$val, -->
 <!--                       result_average_scaled$val, result_single_scaled$val) -->
 <!-- ) -->
 
