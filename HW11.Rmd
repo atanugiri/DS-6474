@@ -175,75 +175,9 @@ pc_out = prcomp(data)
 PC1 = pc_out$x[,1]
 PC2 = pc_out$x[,2]
 plot(PC1, PC2, col = k_means_out$cluster, pch = as.numeric(iris$Species))
+legend("topright", legend = levels(as.factor(iris$Species)), pch = 1:3)
+legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, lty = 1)
 ```
-
-<!-- ```{r} -->
-<!-- # K-means clustering with K=3 -->
-<!-- set.seed(123) -->
-<!-- kmeans_scaled_final <- kmeans(iris_scaled, centers = 3, nstart = 25) -->
-
-<!-- # Confusion matrix -->
-<!-- table_kmeans_scaled <- table(kmeans_scaled_final$cluster, iris$Species) -->
-
-<!-- # Best confusion matrix and accuracy -->
-<!-- result_kmeans_scaled <- Best_Confusion_Matrix(table_kmeans_scaled) -->
-
-<!-- cat("K-means (scaled) Best Confusion Matrix:\n") -->
-<!-- print(result_kmeans_scaled$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n\n", result_kmeans_scaled$val)) -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- # Distance matrix -->
-<!-- dist_iris_scaled <- dist(iris_scaled) -->
-
-<!-- # Hierarchical clustering -->
-<!-- hc_complete_scaled <- hclust(dist_iris_scaled, method = "complete") -->
-<!-- hc_average_scaled  <- hclust(dist_iris_scaled, method = "average") -->
-<!-- hc_single_scaled   <- hclust(dist_iris_scaled, method = "single") -->
-
-<!-- # Cut into 3 clusters -->
-<!-- cluster_complete_scaled <- cutree(hc_complete_scaled, k = 3) -->
-<!-- cluster_average_scaled  <- cutree(hc_average_scaled, k = 3) -->
-<!-- cluster_single_scaled   <- cutree(hc_single_scaled, k = 3) -->
-
-<!-- # Confusion matrices -->
-<!-- table_complete_scaled <- table(cluster_complete_scaled, iris$Species) -->
-<!-- table_average_scaled  <- table(cluster_average_scaled, iris$Species) -->
-<!-- table_single_scaled   <- table(cluster_single_scaled, iris$Species) -->
-
-<!-- # Accuracy -->
-<!-- result_complete_scaled <- Best_Confusion_Matrix(table_complete_scaled) -->
-<!-- result_average_scaled  <- Best_Confusion_Matrix(table_average_scaled) -->
-<!-- result_single_scaled   <- Best_Confusion_Matrix(table_single_scaled) -->
-
-<!-- # Print results -->
-<!-- cat("Complete Linkage (scaled) Best Confusion Matrix:\n") -->
-<!-- print(result_complete_scaled$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n\n", result_complete_scaled$val)) -->
-
-<!-- cat("Average Linkage (scaled) Best Confusion Matrix:\n") -->
-<!-- print(result_average_scaled$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n\n", result_average_scaled$val)) -->
-
-<!-- cat("Single Linkage (scaled) Best Confusion Matrix:\n") -->
-<!-- print(result_single_scaled$x) -->
-<!-- cat(sprintf("Accuracy: %.4f\n", result_single_scaled$val)) -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- # Create a data frame manually -->
-<!-- summary_table <- data.frame( -->
-<!--   Method = c("K-means Clustering", "Hierarchical (Complete Linkage)", -->
-<!--              "Hierarchical (Average Linkage)", "Hierarchical (Single Linkage)"), -->
-<!--   Unscaled_Accuracy = c(result$val, result_complete$val, -->
-<!--                         result_average$val, result_single$val), -->
-<!--   Scaled_Accuracy = c(result_kmeans_scaled$val, result_complete_scaled$val, -->
-<!--                       result_average_scaled$val, result_single_scaled$val) -->
-<!-- ) -->
-
-<!-- print(summary_table) -->
-<!-- ``` -->
 
 <!-- h. -->
 <!-- ```{r} -->
