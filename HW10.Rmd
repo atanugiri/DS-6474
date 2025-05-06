@@ -95,22 +95,117 @@ We now use boosting to predict Salary in the Hitters data set from the ISLR2 pac
 
 ## Questions
 a. Remove the observations for those whose salary information is unknown, and then log-transform the salaries. (Taking a log transformation reduces the effect of outliers when we calculate the residual or RSS.)
+```{r}
+library(ISLR2)
+head(Hitters)
+summary(Hitters)
+Hitters = na.omit(Hitters)
+Hitters$Salary = log(Hitters$Salary)
+```
 
 b. Create a training set consisting of 200 observations, and a test set consisting of the remaining observations.
+```{r}
+n_train = 200
+index = sample(1:nrow(Hitters), n_train)
+train_data = Hitters[index,]
+test_data = Hitters[-index,]
+```
 
 c. Perform boosting on the training set with depth $d=1$ and $B=1000$ trees for a range of values of the shrinkage parameter $\lambda$. Produce a plot with different shrinkage values on the $x-$-axis and the corresponding training set MSE on the $y$-axis. (Consider log or power scale for the $x$ axis. For example, take $\lambda=10^{-x}$, where x = seq(10, 0.1, by=-0.1))
+```{r}
+library(gbm)
+set.seed(101)
+x = seq(10, 0.1, by=-0.1)
+lambda = 10^(-x)
+train_error = test_error = rep(NA, length(lambda))
+for (i in 1:length(lambda)) {
+  boosting_fit = gbm(Salary ~ ., data = train_data, distribution = "gaussian", 
+                     n.trees = 1000, shrinkage = lambda[i])
+  
+  # Train data
+  train_pred = predict(boosting_fit, newdata = train_data, n.trees = 1000)
+  train_error[i] = mean((train_pred - train_data$Salary)^2)
+  
+  # Train data
+  test_pred = predict(boosting_fit, newdata = test_data, n.trees = 1000)
+  test_error[i] = mean((test_pred - test_data$Salary)^2)
+}
+
+plot(lambda, train_error, type="b", col = "blue")
+lines(lambda, test_error, type="b", col = "red")
+legend("topright", legend = c("train_error", "test_error"), 
+       col = c("blue", "red"), lty = 1, pch = 1)
+```
 
 d. Produce a plot with different shrinkage values on the $x$-axis and the corresponding test set MSE on the $y$-axis. (For better understanding, plot it on the previous figure.) What is your recommended value of the shrinkage parameter? You may use the ‘elbow’ method, if needed.
+```{r}
+(lambda_opt = lambda[(which.min(test_error))])
+```
 
 e. In the previous two questions, we tuned $\lambda$ keeping $d$ and $B$ fixed. Now, we will tune $B$, keeping $d=1$ and $\lambda$ as selected from the previous question. Take an appropriate range of $B$, say 100 to 5,000 with an increment of 100, and tune $B$ following the steps in previous two questions.
+```{r}
+set.seed(101)
+B = seq(from = 100, to = 5000, by = 100)
+train_error = test_error = rep(NA, length(B))
+for (i in 1:length(B)) {
+  boosting_fit = gbm(Salary ~ ., data = train_data, distribution = "gaussian", 
+                     n.trees = B[i], shrinkage = lambda_opt)
+  
+  # Train data
+  train_pred = predict(boosting_fit, newdata = train_data, n.trees = B[i])
+  train_error[i] = mean((train_pred - train_data$Salary)^2)
+  
+  # Train data
+  test_pred = predict(boosting_fit, newdata = test_data, n.trees = B[i])
+  test_error[i] = mean((test_pred - test_data$Salary)^2)
+}
+
+plot(B, train_error, type="b", col = "blue")
+lines(B, test_error, type="b", col = "red")
+legend("topright", legend = c("train_error", "test_error"), 
+       col = c("blue", "red"), lty = 1, pch = 1)
+
+(B_opt = B[(which.min(test_error))])
+```
 
 f. Now, for fixed values of $B$ and $\lambda$, as obtained from the previous steps, describe the effect of the depth parameter $d$, and tune it properly. You may take $d$ from 1 to 10.
+```{r}
+set.seed(101)
+d = seq(1, 10)
+train_error = test_error = rep(NA, length(d))
+for (i in 1:length(d)) {
+  boosting_fit = gbm(Salary ~ ., data = train_data, distribution = "gaussian", 
+                     n.trees = B_opt, interaction.depth = d[i], 
+                     shrinkage = lambda_opt)
+  
+  # Train data
+  train_pred = predict(boosting_fit, newdata = train_data, n.trees = B_opt)
+  train_error[i] = mean((train_pred - train_data$Salary)^2)
+  
+  # Train data
+  test_pred = predict(boosting_fit, newdata = test_data, n.trees = B_opt)
+  test_error[i] = mean((test_pred - test_data$Salary)^2)
+}
+
+plot(d, train_error, type="b", col = "blue")
+lines(d, test_error, type="b", col = "red")
+legend("topright", legend = c("train_error", "test_error"), 
+       col = c("blue", "red"), lty = 1, pch = 1)
+
+(d_opt = d[(which.min(test_error))])
+```
+
 
 \textbf{Note:} You may apply another round of iterations to tune the parameters further. Because in the first step, we fixed $d=1$ and $B=1000$ to tune $\lambda$. However, we may get a better $\lambda$ if we tune it using $d=d_{opt}$ and $B=B_{opt}$, where $d_{opt}$ and $B_{opt}$, are the ‘optimum’ values of $d$ and $B$, respectively, from the first iteration.
 
 g. Finally, use the selected tuning parameters to fit a boosted model to the training data. Which variables appear to be the most important predictors in your final boosted model? What is the test set MSE?
-
 ```{r}
+boosting_fit = gbm(Salary ~ ., data = train_data, distribution = "gaussian", 
+                   n.trees = B_opt, interaction.depth = d_opt, 
+                   shrinkage = lambda_opt)
+summary(boosting_fit)
 
+test_pred = predict(boosting_fit, newdata = test_data)
+(test_mse = mean((test_pred - test_data$Salary)^2))
 ```
 
