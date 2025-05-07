@@ -25,11 +25,11 @@ head(data)
 ### Question (b)
 Perform the K-means clustering algorithm for different values $K$, the number of clusters, say 1 to 5. How many clusters do you recommend? Use this value in the following three questions.
 ```{r}
-k <- 5
-WCV <- rep(NA, k)  #within-cluster variation
+k = 5
+WCV = rep(NA, k)  #within-cluster variation
 for (i in 1:k) {
-  k_means_out <- kmeans(data, centers = i, nstart = 20)
-  WCV[i] <- k_means_out$tot.withinss
+  k_means_out = kmeans(data, centers = i, nstart = 20)
+  WCV[i] = k_means_out$tot.withinss
 }
 plot(WCV, xlab = "Number of clusters", type = "b")
 ```
@@ -41,9 +41,9 @@ Use the pair plots and label the clusters. Also, label observations based on the
 ```{r}
 # Perform K-means with K = 3
 set.seed(123)
-k_best <- 3
-k_means_out <- kmeans(data, centers = k_best, nstart = 20)
-plot(as.data.frame(data), col = k_means_out$cluster, pch = as.numeric(as.factor(iris$Species)))
+k_best = 3
+k_means_out = kmeans(data, centers = k_best, nstart = 20)
+pairs(data, col = k_means_out$cluster, pch = as.numeric(as.factor(iris$Species)))
 ```
 
 ### Question (d)
@@ -52,43 +52,41 @@ In high-dimensional data, the pair plots will not be convenient. So, use one or 
 pca_out <- prcomp(data)
 PC1 <- pca_out$x[, 1]
 PC2 <- pca_out$x[, 2]
-plot(PC1, PC2, col = k_means_out$cluster, pch = as.numeric(as.factor(iris$Species)),
-  main = "K-means Clustering", xlab = "First Principal Component", ylab = "Second Principal Component")
+plot(PC1, PC2, col = k_means_out$cluster, pch = as.numeric(as.factor(
+  iris$Species)), main = "K-means Clustering", xlab = "First Principal Component", 
+  ylab = "Second Principal Component")
 
 legend("topright", legend = levels(as.factor(iris$Species)), pch = 1:3)
-legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, lty = 1)
+legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, 
+       lty = 1)
 ```
 
 ### Question (e)
 Calculate the confusion matrix based on the species variable. Also, compute a measure of accuracy. Note that the clusters may come in any order. So you need to consider permuting the rows of the confusion matrix to find the accuracy of clustering.
 ```{r}
-Best_Confusion_Matrix <- function(Confusion_Matrix) {
-  # Computes the best confusion matrix by permuting the rows
+Best_Confusion_Matrix = function(confusion_matrix) {
+  confusion_matrix = as.matrix(confusion_matrix)
   library(combinat)
-  x <- as.matrix(Confusion_Matrix)
-  n <- sum(x)  # sample size
-  p <- nrow(x)  # number of features
-  if (ncol(x) != p)
-    stop("x must be a square matrix.")
+  p = ncol(confusion_matrix)
+  perm_vec = permn(1:p)
+  
+  acc_val = rep(NA, length(perm_vec))
+  for (i in 1:length(perm_vec)) {
+    cur_mat = confusion_matrix[perm_vec[[i]], ]
+    acc_val[i] = sum(diag(cur_mat))/sum(confusion_matrix)
+  }
 
-  perm_vec <- permn(1:p)  # all permutations of 1:p
-  p_fact <- length(perm_vec)  # p factorial
-  accuracy_val <- rep(NA, p_fact)
-
-  # checking
-  for (i in 1:p_fact) accuracy_val[i] <- sum(diag(x[perm_vec[[i]], ]))/n
-
-  best_accuracy_index <- which.max(accuracy_val)
-  best_accuracy_val <- accuracy_val[best_accuracy_index]
-  best_Conf_Mat <- x[perm_vec[[best_accuracy_index]], ]
-
-  return(list(x = best_Conf_Mat, val = best_accuracy_val))
+  index = which.max(acc_val)
+  best_acc_val = acc_val[index]
+  best_mat = confusion_matrix[perm_vec[[index]], ]
+  
+  return(list(best_matrix = best_mat, best_acc = best_acc_val))
 }
 ```
 
 ```{r}
-confusioin_mat <- table(k_means_out$cluster, iris$Species)
-Best_Confusion_Matrix(confusioin_mat)
+confusion_mat = table(k_means_out$cluster, iris$Species)
+Best_Confusion_Matrix(confusion_mat)
 ```
 
 ### Question (f)
@@ -113,6 +111,8 @@ cc_table = table(cluster_complete_3, iris$Species)
 Best_Confusion_Matrix(cc_table)
 
 plot(PC1, PC2, col = cluster_complete_3, pch = as.numeric(as.factor(iris$Species)))
+legend("right", c("C1", "C2", "C3"), col = 1:3, lty = 1)
+legend("bottom", c(levels(iris$Species)), pch = 1:3)
 ```
 
 \textbf{Average linkage}
@@ -122,6 +122,8 @@ ca_table = table(cluster_average_3, iris$Species)
 Best_Confusion_Matrix(ca_table)
 
 plot(PC1, PC2, col = cluster_average_3, pch = as.numeric(as.factor(iris$Species)))
+legend("right", c("C1", "C2", "C3"), col = 1:3, lty = 1)
+legend("bottom", c(levels(iris$Species)), pch = 1:3)
 ```
 
 \textbf{Single linkage}
@@ -131,6 +133,8 @@ cs_table = table(cluster_single_3, iris$Species)
 Best_Confusion_Matrix(cs_table)
 
 plot(PC1, PC2, col = cluster_single_3, pch = as.numeric(as.factor(iris$Species)))
+legend("right", c("C1", "C2", "C3"), col = 1:3, lty = 1)
+legend("bottom", c(levels(iris$Species)), pch = 1:3)
 ```
 
 
@@ -179,6 +183,8 @@ legend("topright", legend = levels(as.factor(iris$Species)), pch = 1:3)
 legend("bottom", legend = c("Cluster 1", "Cluster 2", "Cluster 3"), col = 1:3, lty = 1)
 ```
 
+### Question (e)
+Calculate the confusion matrix based on the species variable. Also, compute a measure of accuracy. Note that the clusters may come in any order. So you need to consider permuting the rows of the confusion matrix to find the accuracy of clustering.
 <!-- h. -->
 <!-- ```{r} -->
 <!-- # PCA on scaled data -->
