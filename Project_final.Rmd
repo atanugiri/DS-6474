@@ -1,0 +1,301 @@
+---
+title: "Project"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# URL of the dataset
+url = "https://archive.ics.uci.edu/ml/machine-learning-databases/autos/imports-85.data"
+
+# Define column names from UCI website
+column_names = c("symboling", "normalized_losses", "make", "fuel_type", "aspiration", 
+                 "num_doors", "body_style", "drive_wheels", "engine_location", 
+                 "wheel_base", "length", "width", "height", "curb_weight", 
+                 "engine_type", "num_cylinders", "engine_size", "fuel_system", 
+                 "bore", "stroke", "compression_ratio", "horsepower", "peak_rpm", 
+                 "city_mpg", "highway_mpg", "price")
+
+# Read the data
+raw_data = read.csv(url, header = FALSE, na.strings = "?", col.names = column_names)
+
+# Drop rows with any missing values
+clean_data = na.omit(raw_data)
+
+# Convert character columns that should be numeric
+to_numeric = c("normalized_losses", "bore", "stroke", "horsepower", "peak_rpm", "price")
+for (col in to_numeric) {
+  clean_data[[col]] = as.numeric(clean_data[[col]])
+}
+
+# head(clean_data)
+# summary(clean_data)
+```
+
+```{r}
+# Convert all character columns to factors
+char_cols = sapply(clean_data, is.character)
+clean_data[, char_cols] = lapply(clean_data[, char_cols], factor)
+clean_data$symboling = as.factor(clean_data$symboling)
+summary(clean_data)
+
+# Drop 'make', 'engine_location', 'fuel_system' from dataset
+regression_data = clean_data[, !(names(clean_data) %in%
+                                   c("make", "engine_location", "fuel_system"))]
+# Drop constant dummy columns (e.g., due to rare factor levels)
+is_constant = sapply(regression_data, function(col) length(unique(col)) == 1)
+regression_data = regression_data[, !is_constant]
+```
+
+```{r}
+library(ggplot2)
+library(GGally)
+
+# Create pair plot
+# ggpairs(regression_data)
+```
+
+### Multiple Linear Regression with Cross-Validation
+```{r}
+library(boot)
+
+# Create design matrix (removing intercept column)
+X = model.matrix(price ~ ., data = regression_data)[, -1]
+y = regression_data$price
+
+# Create full dataframe for glm
+df_glm = data.frame(price = y, X)
+
+# Fit multiple linear regression
+lm_full = glm(price ~ ., data = df_glm)
+summary(lm_full)
+
+# 10-fold cross-validation
+set.seed(123)
+cv_lm_full = cv.glm(df_glm, lm_full, K = 10)
+
+# Report cross-validated MSE
+cv_lm_mse = cv_lm_full$delta[1]
+cat("Cross-validated MSE (Full Multiple Linear Regression):", round(cv_lm_mse, 2), "\n")
+```
+
+### Ridge Regression with All Variables
+```{r}
+library(glmnet)
+
+# Create model matrix (X) and response (y)
+X_ridge = model.matrix(price ~ ., data = regression_data)[, -1]
+y_ridge = regression_data$price
+
+# 10-fold cross-validation for Ridge (alpha = 0)
+set.seed(123)
+cv_ridge = cv.glmnet(X_ridge, y_ridge, alpha = 0, nfolds = 10)
+
+# Best lambda
+best_lambda_ridge = cv_ridge$lambda.min
+cat("Best lambda (Ridge):", round(best_lambda_ridge, 4), "\n")
+
+# MSE at best lambda
+ridge_mse = min(cv_ridge$cvm)
+cat("Cross-validated MSE (Ridge):", round(ridge_mse, 2), "\n")
+
+# plot cross-validation curve
+plot(cv_ridge)
+```
+
+### LASSO Regression with Cross-Validation
+```{r}
+# 10-fold cross-validation for LASSO (alpha = 1)
+set.seed(123)
+cv_lasso = cv.glmnet(X_ridge, y_ridge, alpha = 1, nfolds = 10)
+
+# Best lambda
+best_lambda_lasso = cv_lasso$lambda.min
+cat("Best lambda (LASSO):", round(best_lambda_lasso, 4), "\n")
+
+# MSE at best lambda
+lasso_mse = min(cv_lasso$cvm)
+cat("Cross-validated MSE (LASSO):", round(lasso_mse, 2), "\n")
+
+# View selected coefficients
+lasso_coefs = coef(cv_lasso, s = "lambda.min")
+print(lasso_coefs)
+
+# Plot CV curve for LASSO
+plot(cv_lasso)
+title("LASSO Cross-Validation Curve")
+```
+
+
+### Principal Components Regression (PCR)
+```{r}
+library(pls)
+
+# Use only a safe subset of numeric columns
+numeric_data = regression_data[, sapply(regression_data, is.numeric)]
+
+# Remove constant columns
+numeric_data = numeric_data[, sapply(numeric_data, function(x) length(unique(x)) > 1)]
+
+# Response and predictors
+X_subset = numeric_data[, names(numeric_data) != "price"]
+y_subset = numeric_data$price
+
+# Combine
+pcr_pls_df = data.frame(price = y_subset, X_subset)
+```
+
+```{r}
+set.seed(123)
+pcr_fit = pcr(price ~ ., data = pcr_pls_df, scale = TRUE, validation = "CV")
+summary(pcr_fit)
+
+validationplot(pcr_fit, val.type = "MSEP")
+
+mse_vals_pcr = RMSEP(pcr_fit)$val[1, , ][-1]
+best_pcr_ncomp = which.min(mse_vals_pcr)
+best_pcr_mse = min(mse_vals_pcr)
+
+cat("Best PCR components:", best_pcr_ncomp, "\n")
+cat("PCR MSE:", round(best_pcr_mse, 2), "\n")
+```
+
+### Partial Least Squares (PLS) Regression
+```{r}
+set.seed(123)
+pls_fit = plsr(price ~ ., data = pcr_pls_df, scale = TRUE, validation = "CV")
+summary(pls_fit)
+
+validationplot(pls_fit, val.type = "MSEP")
+
+mse_vals_pls = RMSEP(pls_fit)$val[1, , ][-1]
+best_pls_ncomp = which.min(mse_vals_pls)
+best_pls_mse = min(mse_vals_pls)
+
+cat("Best PLS components:", best_pls_ncomp, "\n")
+cat("PLS MSE:", round(best_pls_mse, 2), "\n")
+```
+
+
+### Regression Tree with Cross-Validation and Pruning
+```{r}
+library(tree)
+
+# Fit a full regression tree
+set.seed(123)
+tree_fit = tree(price ~ ., data = regression_data)
+
+# Summary and visualization
+summary(tree_fit)
+plot(tree_fit)
+text(tree_fit, pretty = 0)
+
+# Cross-validation to determine best tree size
+set.seed(123)
+cv_tree = cv.tree(tree_fit)
+
+# Plot CV error vs. tree size
+plot(cv_tree$size, cv_tree$dev, type = "b", xlab = "Tree Size", ylab = "Deviance")
+
+# Prune to optimal size
+best_size = cv_tree$size[which.min(cv_tree$dev)]
+pruned_tree = prune.tree(tree_fit, best = best_size)
+
+# Plot pruned tree
+plot(pruned_tree)
+text(pruned_tree, pretty = 0)
+
+# Predict and compute MSE
+tree_pred = predict(pruned_tree)
+tree_mse = mean((regression_data$price - tree_pred)^2)
+cat("Cross-validated MSE (Regression Tree):", round(tree_mse, 2), "\n")
+```
+
+### Bagging
+```{r}
+library(randomForest)
+
+p = ncol(regression_data) - 1  # exclude response
+
+set.seed(123)
+bagging_fit = randomForest(price ~ ., data = regression_data, mtry = p, importance = TRUE)
+
+# Predict and compute MSE
+bagging_pred = predict(bagging_fit)
+bagging_mse = mean((regression_data$price - bagging_pred)^2)
+cat("MSE (Bagging):", round(bagging_mse, 2), "\n")
+
+# Variable importance
+varImpPlot(bagging_fit)
+```
+
+### Random Forest
+```{r}
+set.seed(123)
+rf_fit = randomForest(price ~ ., data = regression_data, mtry = floor(sqrt(p)), importance = TRUE)
+
+# Predict and compute MSE
+rf_pred = predict(rf_fit)
+rf_mse = mean((regression_data$price - rf_pred)^2)
+cat("MSE (Random Forest):", round(rf_mse, 2), "\n")
+
+# Variable importance
+varImpPlot(rf_fit)
+```
+
+
+### Boosting
+```{r}
+library(gbm)
+
+set.seed(123)
+boost_fit = gbm(price ~ ., data = regression_data,
+                distribution = "gaussian",
+                n.trees = 5000,
+                interaction.depth = 4,
+                shrinkage = 0.01,
+                cv.folds = 10,
+                verbose = FALSE)
+
+# Optimal number of trees
+best_trees = gbm.perf(boost_fit, method = "cv")
+cat("Best number of trees (Boosting):", best_trees, "\n")
+
+# Predict and compute MSE
+boost_pred = predict(boost_fit, n.trees = best_trees)
+boost_mse = mean((regression_data$price - boost_pred)^2)
+cat("MSE (Boosting):", round(boost_mse, 2), "\n")
+```
+
+###
+```{r}
+# Combine all MSEs
+mse_results_all = c(
+  Linear = round(cv_lm_mse, 2),
+  Ridge = round(ridge_mse, 2),
+  LASSO = round(lasso_mse, 2),
+  Tree = round(tree_mse, 2),
+  Bagging = round(bagging_mse, 2),
+  RandomForest = round(rf_mse, 2),
+  Boosting = round(boost_mse, 2),
+  PCR = round(best_pcr_mse, 2),
+  PLS = round(best_pls_mse, 2)
+)
+
+# Format as table
+mse_table_final = data.frame(
+  Method = names(mse_results_all),
+  MSE = as.numeric(mse_results_all)
+)
+
+# Print MSE table
+print(mse_table_final)
+```
+
+Conclusion: Among all models, Boosting achieved the lowest cross-validated MSE (275,302), indicating superior predictive performance. Ensemble methods such as Random Forest and Bagging also outperformed simpler approaches like Linear Regression, Ridge, and LASSO. The results suggest that flexible, non-linear models are better suited for predicting automobile prices from this dataset.
+
+Note on PCR and PLS performance:
+To ensure successful implementation of PCR and PLS without encountering numerical instability (e.g., La.svd() errors due to collinearity), I used a subset of predictors consisting only of numeric variables with no missing or constant values. This resulted in a much simpler and cleaner predictor matrix. Consequently, the test MSE for PCR and PLS appears drastically lower than other methods. However, this performance is not directly comparable to the full-model MSEs from other approaches, as PCR and PLS used a reduced feature set.
